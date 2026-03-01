@@ -137,12 +137,14 @@ bounded count <= 8
 ```
 
 ## 9. Tooling in This Repository
-- `index.html`: unified DSL builder + strict DSL importer + symbol library + symbolic LTL generation.
-- `template_builder.html`: template-first builder variant.
+- `index.html`: unified DSL builder + strict DSL importer + symbol library + symbolic LTL generation + Coq-backed simplification display.
+- `tools/coq/ltl_kernel.v`: Coq LTL kernel and proven conjunction simplifier.
+- `tools/coq/coq_simplify_server.py`: local HTTP API used by `index.html` to invoke Coq simplification.
+- `tools/coq/coq_simplify.sh`: CLI wrapper to simplify a list of LTL terms via Coq.
 - `FSM安全性质及写法.pdf`: original source material.
 - `FSM安全性质及写法.md`: extracted text version of the source material.
 
-The web tooling stores user-entered strings as typed symbols and generates symbolic DSL/LTL while preserving a symbol-to-string mapping table.
+The web tooling stores user-entered strings as typed symbols and generates symbolic DSL/LTL while preserving a symbol-to-string mapping table. Simplification is delegated to the Coq backend (no JavaScript rewrite simplifier in the UI path).
 
 ## 10. Suggested Citation Scope (for paper drafting)
 A concise formulation for manuscript use:

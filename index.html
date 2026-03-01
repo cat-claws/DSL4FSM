@@ -270,13 +270,8 @@
         </div>
 
         <div>
-          <p><strong>Simplified LTL (Syntactic)</strong></p>
+          <p><strong>Simplified LTL (Coq)</strong></p>
           <pre id="ltlSimplified" class="mono">(compile to generate)</pre>
-        </div>
-
-        <div>
-          <p><strong>Logic-Level Verification Commands (Spot)</strong></p>
-          <pre id="spotCmds" class="mono">(compile to generate commands)</pre>
         </div>
 
         <div>
@@ -289,7 +284,7 @@
           </div>
         </div>
 
-        <p class="foot">Types: <code>S*</code> state, <code>V*</code> variable, <code>N*</code> number, <code>F*</code> formula. Drag/drop is type-constrained. Simplified LTL is proof-safe in jsCoq (dedup + neutral-term handling).</p>
+        <p class="foot">Types: <code>S*</code> state, <code>V*</code> variable, <code>N*</code> number, <code>F*</code> formula. Drag/drop is type-constrained. Simplification is computed by Coq backend.</p>
       </article>
     </section>
   </main>
@@ -314,7 +309,6 @@
     const symbolGroupsEl = document.getElementById('symbolGroups');
     const ltlCombinedEl = document.getElementById('ltlCombined');
     const ltlSimplifiedEl = document.getElementById('ltlSimplified');
-    const spotCmdsEl = document.getElementById('spotCmds');
     const ltlRowsEl = document.getElementById('ltlRows');
     const dslInputEl = document.getElementById('dslInput');
     const exampleSetEl = document.getElementById('exampleSet');
@@ -603,49 +597,6 @@
       });
     }
 
-    function simplifyLtlFormula(expr) {
-      // Keep only normalization that is proof-safe under atom abstraction.
-      return expr.replace(/\s+/g, ' ').trim();
-    }
-
-    function simplifyConjunction(formulas) {
-      const simplified = formulas.map(simplifyLtlFormula);
-      const unique = [];
-      const seen = new Set();
-      simplified.forEach((f) => {
-        if (f === 'G(true)') return;
-        if (!seen.has(f)) {
-          seen.add(f);
-          unique.push(f);
-        }
-      });
-      if (!unique.length) return { list: ['G(true)'], text: 'G(true)' };
-      if (unique.includes('G(false)')) return { list: ['G(false)'], text: 'G(false)' };
-      return { list: unique, text: unique.map((f) => `(${f})`).join(' &&\n') };
-    }
-
-    function shellQuote(s) {
-      return `'${s.replace(/'/g, `'\"'\"'`)}'`;
-    }
-
-    function buildSpotCommands(original, simplified) {
-      const o = shellQuote(original);
-      const s = shellQuote(simplified);
-      return [
-        '# 1) Semantic equivalence: original vs simplified',
-        `ltlfilt -c -f ${o} --equivalent-to ${s}`,
-        '',
-        '# 2) Silent-error checks (tautology / inconsistency)',
-        `ltlfilt -c -f ${o} --equivalent-to 'true'`,
-        `ltlfilt -c -f ${o} --equivalent-to 'false'`,
-        `ltlfilt -c -f ${s} --equivalent-to 'true'`,
-        `ltlfilt -c -f ${s} --equivalent-to 'false'`,
-        '',
-        '# 3) One-shot checker script in this repo',
-        `./tools/logic_check.sh ${o} ${s}`
-      ].join('\n');
-    }
-
     async function simplifyWithCoq(formulas) {
       const endpoints = [
         'http://127.0.0.1:8081/api/coq/simplify',
@@ -669,7 +620,7 @@
           lastErr = e;
         }
       }
-      throw new Error(`Cannot reach Coq simplify server on port 8081/8811. Start: 'python tools/coq_simplify_server.py'. Last error: ${lastErr?.message || 'unknown'}`);
+      throw new Error(`Cannot reach Coq simplify server on port 8081/8811. Start: 'python tools/coq/coq_simplify_server.py'. Last error: ${lastErr?.message || 'unknown'}`);
     }
 
     function compileRules() {
@@ -677,7 +628,6 @@
       if (!rules.length) {
         ltlCombinedEl.textContent = '(compile to generate)';
         ltlSimplifiedEl.textContent = '(compile to generate)';
-        spotCmdsEl.textContent = '(compile to generate commands)';
         return;
       }
 
@@ -689,19 +639,17 @@
 
       const formulas = rules.map((r) => r.ltl);
       const original = formulas.map((f) => `(${f})`).join(' &&\n');
-      const simplified = simplifyConjunction(formulas); // local fallback
       ltlCombinedEl.textContent = original;
-      ltlSimplifiedEl.textContent = simplified.text;
-      spotCmdsEl.textContent = buildSpotCommands(original, simplified.text);
+      ltlSimplifiedEl.textContent = '(simplifying with Coq...)';
 
       const reqId = ++simplifyReqSeq;
       simplifyWithCoq(formulas).then((data) => {
         if (reqId !== simplifyReqSeq) return;
         ltlSimplifiedEl.textContent = data.text || 'G(true)';
-        spotCmdsEl.textContent = buildSpotCommands(original, data.text || 'G(true)');
       }).catch((err) => {
         if (reqId !== simplifyReqSeq) return;
-        setStatus(`Coq simplifier unavailable, using local fallback: ${err.message}`, true);
+        ltlSimplifiedEl.textContent = '(Coq simplification unavailable)';
+        setStatus(`Coq simplifier unavailable: ${err.message}`, true);
       });
     }
 

@@ -7,9 +7,9 @@ import tempfile
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-TOOLS = ROOT / 'tools'
-KERNEL = TOOLS / 'ltl_kernel.v'
+ROOT = Path(__file__).resolve().parents[2]
+COQ_DIR = ROOT / 'tools' / 'coq'
+KERNEL = COQ_DIR / 'ltl_kernel.v'
 
 COQ_ENV = 'rh1'
 HOST = '127.0.0.1'
@@ -23,7 +23,7 @@ def run(cmd):
 def ensure_kernel_compiled():
     cmd = [
         'conda', 'run', '-n', COQ_ENV,
-        'coqc', '-Q', str(TOOLS), 'DSL4FSM', str(KERNEL)
+        'coqc', '-Q', str(COQ_DIR), 'DSL4FSM', str(KERNEL)
     ]
     p = run(cmd)
     if p.returncode != 0:
@@ -101,7 +101,7 @@ def coq_simplify_formulas(formulas):
     try:
         cmd = [
             'conda', 'run', '-n', COQ_ENV,
-            'coqc', '-Q', str(TOOLS), 'DSL4FSM', str(tmp)
+            'coqc', '-Q', str(COQ_DIR), 'DSL4FSM', str(tmp)
         ]
         p = run(cmd)
         if p.returncode != 0:
