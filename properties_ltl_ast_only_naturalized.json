@@ -1,0 +1,501 @@
+{
+  "type": "and",
+  "args": [
+    {
+      "type": "globally",
+      "operand": {
+        "type": "not",
+        "operand": {
+          "type": "and",
+          "args": [
+            {
+              "type": "ap",
+              "name": "Grant signal for requester 1 in a mutual-exclusion control condition."
+            },
+            {
+              "type": "ap",
+              "name": "Grant signal for requester 2 in a mutual-exclusion control condition."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "not",
+        "operand": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current high-level Git workflow state of the repository."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A violation state indicating commits were lost."
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "not",
+        "operand": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current Git workflow action/event being attempted at this step."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A rebase action that rewrites commits already published to a remote repository."
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "not",
+        "operand": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current Git workflow action/event being attempted at this step."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A merge action."
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "implies",
+        "left": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current repository operation mode."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A detached-head repository mode."
+          }
+        },
+        "right": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "The current Git workflow action/event being attempted at this step."
+            },
+            "right": {
+              "type": "enum",
+              "name": "A normal push action to the remote repository."
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "implies",
+        "left": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The currently active branch classification."
+          },
+          "right": {
+            "type": "enum",
+            "name": "The main branch."
+          }
+        },
+        "right": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "The current Git workflow action/event being attempted at this step."
+            },
+            "right": {
+              "type": "enum",
+              "name": "A direct commit action on the current branch (as modeled in this workflow)."
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "not",
+        "operand": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current synchronization relation between local and remote history."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A synchronization status where local and remote histories have diverged."
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "implies",
+        "left": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current Git workflow action/event being attempted at this step."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A normal push action to the remote repository."
+          }
+        },
+        "right": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current synchronization relation between local and remote history."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A synchronization status where local history is ahead of remote history."
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "not",
+        "operand": {
+          "type": "and",
+          "args": [
+            {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "The divergence-condition indicator for local versus remote history."
+              },
+              "right": {
+                "type": "enum",
+                "name": "A divergence flag indicating the histories are in a diverged condition."
+              }
+            },
+            {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "The current Git workflow action/event being attempted at this step."
+              },
+              "right": {
+                "type": "enum",
+                "name": "A failed rebase outcome/action indicator."
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "implies",
+        "left": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current high-level Git workflow state of the repository."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A workflow state in which an immediate force push is required."
+          }
+        },
+        "right": {
+          "type": "next",
+          "operand": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "The current high-level Git workflow state of the repository."
+              },
+              "right": {
+                "type": "enum",
+                "name": "A violation state indicating that a required immediate force push was missed."
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "implies",
+        "left": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current Git workflow action/event being attempted at this step."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A force-push action."
+          }
+        },
+        "right": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current authorization status for sensitive operations."
+          },
+          "right": {
+            "type": "enum",
+            "name": "An authorized/authenticated status allowing the guarded action."
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "le",
+        "left": {
+          "type": "var",
+          "name": "The number of unpublished commits currently in scope."
+        },
+        "right": {
+          "type": "number",
+          "value": 8
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "implies",
+        "left": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current Git workflow action/event being attempted at this step."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A force-push action."
+          }
+        },
+        "right": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The role assigned to the acting user."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A maintainer-level role."
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "implies",
+        "left": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The currently active branch classification."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A protected-branch classification."
+          }
+        },
+        "right": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "The current Git workflow action/event being attempted at this step."
+            },
+            "right": {
+              "type": "enum",
+              "name": "A normal push action to the remote repository."
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "not",
+        "operand": {
+          "type": "and",
+          "args": [
+            {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "The currently active branch classification."
+              },
+              "right": {
+                "type": "enum",
+                "name": "A protected-branch classification."
+              }
+            },
+            {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "The current Git workflow action/event being attempted at this step."
+              },
+              "right": {
+                "type": "enum",
+                "name": "A force-push action."
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "implies",
+        "left": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current repository operation mode."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A detached-head repository mode."
+          }
+        },
+        "right": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "The current Git workflow action/event being attempted at this step."
+            },
+            "right": {
+              "type": "enum",
+              "name": "A direct commit action on the current branch (as modeled in this workflow)."
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "implies",
+        "left": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current Git workflow action/event being attempted at this step."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A rebase action is requested/started."
+          }
+        },
+        "right": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "The current synchronization relation between local and remote history."
+            },
+            "right": {
+              "type": "enum",
+              "name": "A synchronization status where no rebase is needed (already synchronized)."
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "implies",
+        "left": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current Git workflow action/event being attempted at this step."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A normal push action to the remote repository."
+          }
+        },
+        "right": {
+          "type": "eq",
+          "left": {
+            "type": "var",
+            "name": "The current network availability status for remote operations."
+          },
+          "right": {
+            "type": "enum",
+            "name": "A network status indicating remote connectivity is available."
+          }
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "le",
+        "left": {
+          "type": "var",
+          "name": "The number of retry attempts used by the workflow operation."
+        },
+        "right": {
+          "type": "number",
+          "value": 3
+        }
+      }
+    },
+    {
+      "type": "globally",
+      "operand": {
+        "type": "le",
+        "left": {
+          "type": "var",
+          "name": "The current depth of pending operations in the processing queue."
+        },
+        "right": {
+          "type": "number",
+          "value": 64
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,1143 @@
+{
+  "source": "README.md section 11.2",
+  "property_count": 20,
+  "properties": [
+    {
+      "id": "P1",
+      "human_intent": "Mutual exclusion of grants",
+      "natural_input": "invariant \"two different requesters are never granted at the same time\"",
+      "strict_dsl": "invariant !(grant1 && grant2)",
+      "ltl_shape": "G φ",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "and",
+            "args": [
+              {
+                "type": "ap",
+                "name": "grant1"
+              },
+              {
+                "type": "ap",
+                "name": "grant2"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "P2",
+      "human_intent": "No commit-loss sink reached",
+      "natural_input": "forbid \"any state that represents lost commits is reached\"",
+      "strict_dsl": "forbid (state == ViolationLost)",
+      "ltl_shape": "G !φ",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "state"
+            },
+            "right": {
+              "type": "enum",
+              "name": "ViolationLost"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P3",
+      "human_intent": "Never rewrite published history",
+      "natural_input": "forbid \"an operation rewrites commits that are already published\"",
+      "strict_dsl": "forbid (event == RB_pub)",
+      "ltl_shape": "G !φ",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "RB_pub"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P4",
+      "human_intent": "No merge in rebase-only policy",
+      "natural_input": "forbid \"a merge operation is performed\"",
+      "strict_dsl": "forbid (event == MG)",
+      "ltl_shape": "G !φ",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "MG"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P5",
+      "human_intent": "Detached-head implies no push",
+      "natural_input": "require \"the repository is in detached-head mode\" -> \"pushing is not allowed\"",
+      "strict_dsl": "require (mode == Detached) -> !(event == PU)",
+      "ltl_shape": "G(φ -> ψ)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "mode"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Detached"
+            }
+          },
+          "right": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "event"
+              },
+              "right": {
+                "type": "enum",
+                "name": "PU"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P6",
+      "human_intent": "Main branch protected from direct commit",
+      "natural_input": "require \"the current branch is main\" -> \"direct commit is not allowed\"",
+      "strict_dsl": "require (branch == Main) -> !(event == CO)",
+      "ltl_shape": "G(φ -> ψ)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "branch"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Main"
+            }
+          },
+          "right": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "event"
+              },
+              "right": {
+                "type": "enum",
+                "name": "CO"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P7",
+      "human_intent": "Divergence state forbidden",
+      "natural_input": "forbid \"the local and remote histories are diverged\"",
+      "strict_dsl": "forbid (sync == Diverged)",
+      "ltl_shape": "G !φ",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "sync"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Diverged"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P8",
+      "human_intent": "Push allowed only when ahead",
+      "natural_input": "require \"a push is attempted\" -> \"the local branch is ahead of remote\"",
+      "strict_dsl": "require (event == PU) -> (sync == Ahead)",
+      "ltl_shape": "G(φ -> ψ)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "PU"
+            }
+          },
+          "right": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "sync"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Ahead"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P9",
+      "human_intent": "Rebase failure forbidden under divergence",
+      "natural_input": "forbid \"a rebase failure occurs while histories are diverged\"",
+      "strict_dsl": "forbid ((divergence == Div) && (event == RB_fail))",
+      "ltl_shape": "G !φ",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "and",
+            "args": [
+              {
+                "type": "eq",
+                "left": {
+                  "type": "var",
+                  "name": "divergence"
+                },
+                "right": {
+                  "type": "enum",
+                  "name": "Div"
+                }
+              },
+              {
+                "type": "eq",
+                "left": {
+                  "type": "var",
+                  "name": "event"
+                },
+                "right": {
+                  "type": "enum",
+                  "name": "RB_fail"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "P10",
+      "human_intent": "Immediate force-push obligation (state encoded)",
+      "natural_input": "no_transition \"state where immediate force-push is required\" -> \"violation state for missing immediate force-push\"",
+      "strict_dsl": "no_transition NeedImmediateForcePush -> ViolationMissedImmediateForcePush",
+      "ltl_shape": "G(s1 -> X !s2)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "state"
+            },
+            "right": {
+              "type": "enum",
+              "name": "NeedImmediateForcePush"
+            }
+          },
+          "right": {
+            "type": "next",
+            "operand": {
+              "type": "not",
+              "operand": {
+                "type": "eq",
+                "left": {
+                  "type": "var",
+                  "name": "state"
+                },
+                "right": {
+                  "type": "enum",
+                  "name": "ViolationMissedImmediateForcePush"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P11",
+      "human_intent": "Force-push requires authorization",
+      "natural_input": "require \"a force-push is requested\" -> \"the actor is authorized\"",
+      "strict_dsl": "require (event == PUF) -> (auth == Auth)",
+      "ltl_shape": "G(φ -> ψ)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "PUF"
+            }
+          },
+          "right": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "auth"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Auth"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P12",
+      "human_intent": "Bounded unpublished-commit count",
+      "natural_input": "bounded \"number of unpublished commits\" <= 8",
+      "strict_dsl": "bounded count <= 8",
+      "ltl_shape": "G(x <= N)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "le",
+          "left": {
+            "type": "var",
+            "name": "count"
+          },
+          "right": {
+            "type": "number",
+            "value": 8
+          }
+        }
+      }
+    },
+    {
+      "id": "P13",
+      "human_intent": "Force-push allowed only for maintainers",
+      "natural_input": "require \"a force-push is requested\" -> \"the actor has maintainer role\"",
+      "strict_dsl": "require (event == PUF) -> (role == Maintainer)",
+      "ltl_shape": "G(φ -> ψ)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "PUF"
+            }
+          },
+          "right": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "role"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Maintainer"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P14",
+      "human_intent": "Protected branch blocks normal push",
+      "natural_input": "require \"current branch is protected\" -> \"normal push is not allowed\"",
+      "strict_dsl": "require (branch == Protected) -> !(event == PU)",
+      "ltl_shape": "G(φ -> ψ)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "branch"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Protected"
+            }
+          },
+          "right": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "event"
+              },
+              "right": {
+                "type": "enum",
+                "name": "PU"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P15",
+      "human_intent": "Protected branch blocks force-push",
+      "natural_input": "forbid \"force-push is attempted on a protected branch\"",
+      "strict_dsl": "forbid ((branch == Protected) && (event == PUF))",
+      "ltl_shape": "G !φ",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "and",
+            "args": [
+              {
+                "type": "eq",
+                "left": {
+                  "type": "var",
+                  "name": "branch"
+                },
+                "right": {
+                  "type": "enum",
+                  "name": "Protected"
+                }
+              },
+              {
+                "type": "eq",
+                "left": {
+                  "type": "var",
+                  "name": "event"
+                },
+                "right": {
+                  "type": "enum",
+                  "name": "PUF"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "P16",
+      "human_intent": "Detached mode blocks commit",
+      "natural_input": "require \"repository is detached\" -> \"commit is not allowed\"",
+      "strict_dsl": "require (mode == Detached) -> !(event == CO)",
+      "ltl_shape": "G(φ -> ψ)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "mode"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Detached"
+            }
+          },
+          "right": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "event"
+              },
+              "right": {
+                "type": "enum",
+                "name": "CO"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P17",
+      "human_intent": "Rebase only when needed",
+      "natural_input": "require \"a rebase is requested\" -> \"branch is not already synchronized\"",
+      "strict_dsl": "require (event == RB) -> (sync != Clean)",
+      "ltl_shape": "G(φ -> ψ)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "RB"
+            }
+          },
+          "right": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "sync"
+              },
+              "right": {
+                "type": "enum",
+                "name": "Clean"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P18",
+      "human_intent": "Push only when network is available",
+      "natural_input": "require \"a push is attempted\" -> \"network is online\"",
+      "strict_dsl": "require (event == PU) -> (network == Online)",
+      "ltl_shape": "G(φ -> ψ)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "PU"
+            }
+          },
+          "right": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "network"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Online"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "P19",
+      "human_intent": "Retry budget bound",
+      "natural_input": "bounded \"number of retries\" <= 3",
+      "strict_dsl": "bounded retry_count <= 3",
+      "ltl_shape": "G(x <= N)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "le",
+          "left": {
+            "type": "var",
+            "name": "retry_count"
+          },
+          "right": {
+            "type": "number",
+            "value": 3
+          }
+        }
+      }
+    },
+    {
+      "id": "P20",
+      "human_intent": "Queue depth bound",
+      "natural_input": "bounded \"pending queue depth\" <= 64",
+      "strict_dsl": "bounded queue_depth <= 64",
+      "ltl_shape": "G(x <= N)",
+      "ltl_ast": {
+        "type": "globally",
+        "operand": {
+          "type": "le",
+          "left": {
+            "type": "var",
+            "name": "queue_depth"
+          },
+          "right": {
+            "type": "number",
+            "value": 64
+          }
+        }
+      }
+    }
+  ],
+  "combined_ltl_ast": {
+    "type": "and",
+    "args": [
+      {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "and",
+            "args": [
+              {
+                "type": "ap",
+                "name": "grant1"
+              },
+              {
+                "type": "ap",
+                "name": "grant2"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "state"
+            },
+            "right": {
+              "type": "enum",
+              "name": "ViolationLost"
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "RB_pub"
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "MG"
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "mode"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Detached"
+            }
+          },
+          "right": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "event"
+              },
+              "right": {
+                "type": "enum",
+                "name": "PU"
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "branch"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Main"
+            }
+          },
+          "right": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "event"
+              },
+              "right": {
+                "type": "enum",
+                "name": "CO"
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "sync"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Diverged"
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "PU"
+            }
+          },
+          "right": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "sync"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Ahead"
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "and",
+            "args": [
+              {
+                "type": "eq",
+                "left": {
+                  "type": "var",
+                  "name": "divergence"
+                },
+                "right": {
+                  "type": "enum",
+                  "name": "Div"
+                }
+              },
+              {
+                "type": "eq",
+                "left": {
+                  "type": "var",
+                  "name": "event"
+                },
+                "right": {
+                  "type": "enum",
+                  "name": "RB_fail"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "state"
+            },
+            "right": {
+              "type": "enum",
+              "name": "NeedImmediateForcePush"
+            }
+          },
+          "right": {
+            "type": "next",
+            "operand": {
+              "type": "not",
+              "operand": {
+                "type": "eq",
+                "left": {
+                  "type": "var",
+                  "name": "state"
+                },
+                "right": {
+                  "type": "enum",
+                  "name": "ViolationMissedImmediateForcePush"
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "PUF"
+            }
+          },
+          "right": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "auth"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Auth"
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "le",
+          "left": {
+            "type": "var",
+            "name": "count"
+          },
+          "right": {
+            "type": "number",
+            "value": 8
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "PUF"
+            }
+          },
+          "right": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "role"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Maintainer"
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "branch"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Protected"
+            }
+          },
+          "right": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "event"
+              },
+              "right": {
+                "type": "enum",
+                "name": "PU"
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "not",
+          "operand": {
+            "type": "and",
+            "args": [
+              {
+                "type": "eq",
+                "left": {
+                  "type": "var",
+                  "name": "branch"
+                },
+                "right": {
+                  "type": "enum",
+                  "name": "Protected"
+                }
+              },
+              {
+                "type": "eq",
+                "left": {
+                  "type": "var",
+                  "name": "event"
+                },
+                "right": {
+                  "type": "enum",
+                  "name": "PUF"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "mode"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Detached"
+            }
+          },
+          "right": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "event"
+              },
+              "right": {
+                "type": "enum",
+                "name": "CO"
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "RB"
+            }
+          },
+          "right": {
+            "type": "not",
+            "operand": {
+              "type": "eq",
+              "left": {
+                "type": "var",
+                "name": "sync"
+              },
+              "right": {
+                "type": "enum",
+                "name": "Clean"
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "implies",
+          "left": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "event"
+            },
+            "right": {
+              "type": "enum",
+              "name": "PU"
+            }
+          },
+          "right": {
+            "type": "eq",
+            "left": {
+              "type": "var",
+              "name": "network"
+            },
+            "right": {
+              "type": "enum",
+              "name": "Online"
+            }
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "le",
+          "left": {
+            "type": "var",
+            "name": "retry_count"
+          },
+          "right": {
+            "type": "number",
+            "value": 3
+          }
+        }
+      },
+      {
+        "type": "globally",
+        "operand": {
+          "type": "le",
+          "left": {
+            "type": "var",
+            "name": "queue_depth"
+          },
+          "right": {
+            "type": "number",
+            "value": 64
+          }
+        }
+      }
+    ]
+  }
+}
