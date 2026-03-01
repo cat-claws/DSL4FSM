@@ -21,35 +21,119 @@ def run(cmd):
 
 
 def ensure_kernel_compiled():
-    cmd = [
-        'conda', 'run', '-n', COQ_ENV,
-        'coqc', '-Q', str(COQ_DIR), 'DSL4FSM', str(KERNEL)
-    ]
+    cmd = ['conda', 'run', '-n', COQ_ENV, 'coqc', '-Q', str(COQ_DIR), 'DSL4FSM', str(KERNEL)]
     p = run(cmd)
     if p.returncode != 0:
         raise RuntimeError(f'Failed to compile ltl_kernel.v:\n{p.stdout}\n{p.stderr}')
 
 
+def strip_outer_parens(s: str) -> str:
+    s = s.strip()
+    while s.startswith('(') and s.endswith(')'):
+        depth = 0
+        ok = True
+        for i, ch in enumerate(s):
+            if ch == '(':
+                depth += 1
+            elif ch == ')':
+                depth -= 1
+                if depth == 0 and i != len(s) - 1:
+                    ok = False
+                    break
+        if ok and depth == 0:
+            s = s[1:-1].strip()
+        else:
+            break
+    return s
+
+
+def split_top_level(s: str, op: str):
+    depth = 0
+    i = 0
+    while i <= len(s) - len(op):
+        ch = s[i]
+        if ch == '(':
+            depth += 1
+            i += 1
+            continue
+        if ch == ')':
+            depth -= 1
+            i += 1
+            continue
+        if depth == 0 and s.startswith(op, i):
+            return s[:i].strip(), s[i + len(op):].strip()
+        i += 1
+    return None
+
+
+def parse_ltl_expr(s: str):
+    s = strip_outer_parens(s.strip())
+    if not s:
+        raise ValueError('empty formula')
+
+    low = s.lower()
+    if low == 'true':
+        return ('true',)
+    if low == 'false':
+        return ('false',)
+
+    split_imp = split_top_level(s, '->')
+    if split_imp:
+        l, r = split_imp
+        return ('imp', parse_ltl_expr(l), parse_ltl_expr(r))
+
+    if s.startswith('G(') and s.endswith(')'):
+        return ('glob', parse_ltl_expr(s[2:-1]))
+    if s.startswith('X(') and s.endswith(')'):
+        return ('next', parse_ltl_expr(s[2:-1]))
+
+    if s.startswith('!'):
+        rest = s[1:].strip()
+        if rest.startswith('(') and rest.endswith(')'):
+            return ('not', parse_ltl_expr(rest[1:-1]))
+        return ('not', parse_ltl_expr(rest))
+
+    # Base proposition (state/event/constraint symbolized or textual)
+    atom = re.sub(r'\s+', ' ', s).strip()
+    return ('atom', atom)
+
+
+def ast_to_coq(ast, atom_to_id):
+    tag = ast[0]
+    if tag == 'true':
+        return 'LTrue'
+    if tag == 'false':
+        return 'LFalse'
+    if tag == 'atom':
+        a = ast[1]
+        if a not in atom_to_id:
+            atom_to_id[a] = len(atom_to_id) + 1
+        return f"Atom {atom_to_id[a]}"
+    if tag == 'not':
+        return f"LNot ({ast_to_coq(ast[1], atom_to_id)})"
+    if tag == 'next':
+        return f"LNext ({ast_to_coq(ast[1], atom_to_id)})"
+    if tag == 'glob':
+        return f"Glob ({ast_to_coq(ast[1], atom_to_id)})"
+    if tag == 'imp':
+        return f"LImp ({ast_to_coq(ast[1], atom_to_id)}) ({ast_to_coq(ast[2], atom_to_id)})"
+    raise ValueError(f'unsupported AST node: {tag}')
+
+
 def build_list_term(formulas):
-    formula_to_id = {}
-    id_to_formula = {}
-    next_id = 1
+    atom_to_id = {}
+    id_to_atom = {}
     terms = []
 
     for f in formulas:
-        f = f.strip()
-        if f == 'G(true)':
-            terms.append('LTrue')
-        elif f == 'G(false)':
-            terms.append('LFalse')
-        else:
-            if f not in formula_to_id:
-                formula_to_id[f] = next_id
-                id_to_formula[next_id] = f
-                next_id += 1
-            terms.append(f"Atom {formula_to_id[f]}")
+        ast = parse_ltl_expr(f)
+        term = ast_to_coq(ast, atom_to_id)
+        terms.append(term)
 
-    return '[' + '; '.join(terms) + ']', id_to_formula
+    for k, v in atom_to_id.items():
+        id_to_atom[v] = k
+
+    return '[' + '; '.join(terms) + ']', id_to_atom
 
 
 def parse_simplified_list(coqc_output):
@@ -59,36 +143,125 @@ def parse_simplified_list(coqc_output):
     return m.group(1).strip()
 
 
-def decode_list_term(list_term, id_to_formula):
+def split_list_items(inner: str):
+    items = []
+    depth = 0
+    cur = []
+    for ch in inner:
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        if ch == ';' and depth == 0:
+            item = ''.join(cur).strip()
+            if item:
+                items.append(item)
+            cur = []
+        else:
+            cur.append(ch)
+    tail = ''.join(cur).strip()
+    if tail:
+        items.append(tail)
+    return items
+
+
+def tokenize_coq_term(s: str):
+    s = s.strip()
+    toks = re.findall(r"Atom|LTrue|LFalse|LNot|LAnd|LImp|LNext|Glob|\(|\)|\d+", s)
+    if ''.join(toks).replace('Atom', 'Atom').replace('LTrue', 'LTrue').replace('LFalse', 'LFalse').replace('LNot', 'LNot').replace('LAnd', 'LAnd').replace('LImp', 'LImp').replace('LNext', 'LNext').replace('Glob', 'Glob') == '':
+        return toks
+    return toks
+
+
+def parse_coq_term_tokens(toks, i=0):
+    if i >= len(toks):
+        raise ValueError('unexpected end of tokens')
+    t = toks[i]
+
+    if t in ('LTrue', 'LFalse'):
+        return (('true',) if t == 'LTrue' else ('false',), i + 1)
+
+    if t == 'Atom':
+        if i + 1 >= len(toks) or not toks[i + 1].isdigit():
+            raise ValueError('Atom without index')
+        return (('atom_id', int(toks[i + 1])), i + 2)
+
+    if t in ('LNot', 'LNext', 'Glob'):
+        if i + 1 >= len(toks) or toks[i + 1] != '(':
+            raise ValueError(f'{t} expects (')
+        sub, j = parse_coq_term_tokens(toks, i + 2)
+        if j >= len(toks) or toks[j] != ')':
+            raise ValueError(f'{t} missing )')
+        tag = {'LNot': 'not', 'LNext': 'next', 'Glob': 'glob'}[t]
+        return ((tag, sub), j + 1)
+
+    if t in ('LAnd', 'LImp'):
+        if i + 1 >= len(toks) or toks[i + 1] != '(':
+            raise ValueError(f'{t} expects first (')
+        left, j = parse_coq_term_tokens(toks, i + 2)
+        if j >= len(toks) or toks[j] != ')':
+            raise ValueError(f'{t} missing first )')
+        if j + 1 >= len(toks) or toks[j + 1] != '(':
+            raise ValueError(f'{t} expects second (')
+        right, k = parse_coq_term_tokens(toks, j + 2)
+        if k >= len(toks) or toks[k] != ')':
+            raise ValueError(f'{t} missing second )')
+        tag = 'and' if t == 'LAnd' else 'imp'
+        return ((tag, left, right), k + 1)
+
+    raise ValueError(f'unexpected token: {t}')
+
+
+def parse_coq_term(s: str):
+    toks = tokenize_coq_term(s)
+    ast, j = parse_coq_term_tokens(toks, 0)
+    if j != len(toks):
+        raise ValueError(f'unparsed tokens in term: {toks[j:]}')
+    return ast
+
+
+def ast_to_ltl_string(ast, id_to_atom):
+    tag = ast[0]
+    if tag == 'true':
+        return 'true'
+    if tag == 'false':
+        return 'false'
+    if tag == 'atom_id':
+        idx = ast[1]
+        if idx not in id_to_atom:
+            raise ValueError(f'unknown Atom id {idx}')
+        return id_to_atom[idx]
+    if tag == 'not':
+        return f"!({ast_to_ltl_string(ast[1], id_to_atom)})"
+    if tag == 'next':
+        return f"X({ast_to_ltl_string(ast[1], id_to_atom)})"
+    if tag == 'glob':
+        return f"G({ast_to_ltl_string(ast[1], id_to_atom)})"
+    if tag == 'imp':
+        return f"({ast_to_ltl_string(ast[1], id_to_atom)}) -> ({ast_to_ltl_string(ast[2], id_to_atom)})"
+    if tag == 'and':
+        return f"({ast_to_ltl_string(ast[1], id_to_atom)}) && ({ast_to_ltl_string(ast[2], id_to_atom)})"
+    raise ValueError(f'unsupported AST tag {tag}')
+
+
+def decode_list_term(list_term, id_to_atom):
     if list_term == '[]':
         return []
     if not (list_term.startswith('[') and list_term.endswith(']')):
         raise RuntimeError(f'Unexpected list term: {list_term}')
-
     inner = list_term[1:-1].strip()
     if not inner:
         return []
 
-    items = [x.strip() for x in inner.split(';')]
     out = []
-    for it in items:
-        if it == 'LTrue':
-            out.append('G(true)')
-        elif it == 'LFalse':
-            out.append('G(false)')
-        else:
-            m = re.fullmatch(r'Atom\s+(\d+)', it)
-            if not m:
-                raise RuntimeError(f'Unsupported simplified item from Coq: {it}')
-            idx = int(m.group(1))
-            if idx not in id_to_formula:
-                raise RuntimeError(f'Unknown atom id from Coq: {idx}')
-            out.append(id_to_formula[idx])
+    for item in split_list_items(inner):
+        ast = parse_coq_term(item)
+        out.append(ast_to_ltl_string(ast, id_to_atom))
     return out
 
 
 def coq_simplify_formulas(formulas):
-    list_term, id_to_formula = build_list_term(formulas)
+    list_term, id_to_atom = build_list_term(formulas)
 
     with tempfile.NamedTemporaryFile('w', suffix='.v', prefix='coqtmp', delete=False) as tf:
         tmp = Path(tf.name)
@@ -99,16 +272,13 @@ def coq_simplify_formulas(formulas):
         tf.write('Eval vm_compute in (simplify_conj input_conj).\n')
 
     try:
-        cmd = [
-            'conda', 'run', '-n', COQ_ENV,
-            'coqc', '-Q', str(COQ_DIR), 'DSL4FSM', str(tmp)
-        ]
+        cmd = ['conda', 'run', '-n', COQ_ENV, 'coqc', '-Q', str(COQ_DIR), 'DSL4FSM', str(tmp)]
         p = run(cmd)
         if p.returncode != 0:
             raise RuntimeError(f'coqc failed:\n{p.stdout}\n{p.stderr}')
 
         simp_list_term = parse_simplified_list(p.stdout)
-        simp_formulas = decode_list_term(simp_list_term, id_to_formula)
+        simp_formulas = decode_list_term(simp_list_term, id_to_atom)
         return simp_formulas
     finally:
         try:
@@ -145,7 +315,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError('formulas must be an array of strings')
 
             simp = coq_simplify_formulas(formulas)
-            text = 'G(true)' if not simp else ' &&\n'.join(f'({x})' for x in simp)
+            text = 'true' if not simp else ' &&\n'.join(f'({x})' for x in simp)
             self._send(200, {'ok': True, 'simplified': simp, 'text': text})
         except Exception as e:
             self._send(500, {'ok': False, 'error': str(e)})
