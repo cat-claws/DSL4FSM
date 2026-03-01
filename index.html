@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Unified DSL Builder -> LTL</title>
+  <style>
+    :root {
+      --bg: #f6f5f2;
+      --panel: #fffdf7;
+      --ink: #1d2018;
+      --muted: #626a59;
+      --border: #ddd8ca;
+      --accent: #065f46;
+      --warn: #9a3412;
+      --error: #b42318;
+      --ok: #166534;
+      --shadow: 0 14px 28px rgba(27, 31, 22, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% 10%, #f1e8d5 0 14%, transparent 14%),
+        radial-gradient(circle at 90% 85%, #dff0e3 0 18%, transparent 18%),
+        linear-gradient(140deg, #f9f6ec 0%, #f1f7f3 100%);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
+      padding: 22px 14px;
+      min-height: 100vh;
+    }
+
+    .wrap { width: min(1280px, 100%); margin: 0 auto; display: grid; gap: 14px; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    h1 { margin: 0 0 6px; font: 700 clamp(1.2rem, 2.4vw, 1.8rem)/1.2 "IBM Plex Serif", Georgia, serif; }
+    .sub { margin: 0; color: var(--muted); }
+
+    .layout { display: grid; gap: 14px; grid-template-columns: 1.15fr 0.85fr; }
+    @media (max-width: 1060px) { .layout { grid-template-columns: 1fr; } }
+
+    .stack { display: grid; gap: 12px; }
+    .templates { display: grid; gap: 10px; }
+
+    .tpl {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: #fff;
+    }
+
+    .tpl-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .tpl-title { font-weight: 700; font-size: 0.92rem; }
+
+    .code-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      font: 600 0.9rem/1.45 "JetBrains Mono", Consolas, monospace;
+    }
+
+    .kw { color: #7c2d12; font-weight: 700; }
+
+    .slot-wrap { display: inline-flex; flex-direction: column; gap: 4px; min-width: 110px; }
+
+    input.slot, textarea, select, input[type="text"] {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 8px;
+      font: 500 0.86rem/1.3 "JetBrains Mono", Consolas, monospace;
+      background: #fcfcfa;
+      color: var(--ink);
+    }
+
+    textarea { width: 100%; min-height: 120px; resize: vertical; }
+
+    input.slot.drag-ok { outline: 2px solid #72b6a6; outline-offset: 1px; }
+    input.slot.drag-bad { outline: 2px solid #e27762; outline-offset: 1px; }
+
+    .slot-meta { min-height: 1em; font: 600 0.75rem/1 "JetBrains Mono", Consolas, monospace; color: #49584d; }
+
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+    button {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font: 700 0.84rem/1 "IBM Plex Sans", sans-serif;
+      cursor: pointer;
+    }
+    button:hover { border-color: #bbb4a3; }
+    .add { background: var(--accent); color: #fff; border-color: transparent; }
+    .add:hover { background: #075842; }
+    .warn { background: #fff7ed; color: var(--warn); border-color: #f6d6b3; }
+
+    .status { min-height: 1.2em; font-size: 0.9rem; font-weight: 700; }
+    .ok { color: var(--ok); }
+    .error { color: var(--error); }
+
+    .mono {
+      margin: 0;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: 500 0.86rem/1.45 "JetBrains Mono", Consolas, monospace;
+    }
+
+    .symbols { display: grid; gap: 8px; }
+    .sym-group { border: 1px solid #ece7da; border-radius: 10px; padding: 8px; background: #fff; }
+    .sym-head { margin: 0 0 6px; font-size: 0.82rem; color: #5d664f; text-transform: uppercase; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 999px;
+      border: 1px solid #d7e5db;
+      background: #f0f8f3;
+      padding: 5px 9px;
+      font: 600 0.78rem/1 "JetBrains Mono", Consolas, monospace;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .chip .raw { color: #2f3b33; opacity: 0.85; }
+
+    .two-col { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 760px) { .two-col { grid-template-columns: 1fr; } }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    th, td { padding: 7px 8px; border-bottom: 1px solid #ece9de; text-align: left; vertical-align: top; }
+    th { background: #fbfaf5; text-transform: uppercase; font-size: 0.76rem; color: #596150; }
+
+    .foot { color: var(--muted); font-size: 0.79rem; margin: 0; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>Unified DSL Builder + Translator</h1>
+      <p class="sub">One page for template editing, strict DSL import, examples, symbol reuse, and LTL translation.</p>
+      <p class="sub">All rules are stored symbolically. LTL output uses symbols only.</p>
+    </section>
+
+    <section class="layout">
+      <article class="card stack">
+        <div class="two-col">
+          <section class="stack">
+            <p><strong>Strict DSL Import</strong></p>
+            <textarea id="dslInput" spellcheck="false" placeholder="One rule per line, strict syntax (no 'safety', no ':', no trailing ';')."></textarea>
+            <div class="row">
+              <button id="importDsl" class="add">Import DSL Lines</button>
+              <button id="clearDsl">Clear Input</button>
+            </div>
+          </section>
+
+          <section class="stack">
+            <p><strong>Examples (Loaded Through Symbol Pipeline)</strong></p>
+            <div class="row">
+              <select id="exampleSet">
+                <option value="core">Core</option>
+                <option value="git_safety">Git Safety</option>
+                <option value="guards">Guarded Actions</option>
+                <option value="transition">Transition Focus</option>
+              </select>
+              <button id="loadExample" class="warn">Load Example</button>
+              <button id="shuffleExample">Shuffle Random</button>
+            </div>
+            <p class="foot">Examples are imported as normal DSL lines, then symbolized.</p>
+          </section>
+        </div>
+
+        <section>
+          <p><strong>Template Builder (5 Rules)</strong></p>
+          <div class="templates">
+            <div class="tpl" data-template="invariant">
+              <div class="tpl-head"><div class="tpl-title">Invariant</div><button class="add" data-add="invariant">Add Rule</button></div>
+              <div class="code-line"><span class="kw">invariant</span><span class="slot-wrap"><input class="slot" data-type="formula" data-slot="phi" placeholder="Formula" /><span class="slot-meta"></span></span></div>
+            </div>
+
+            <div class="tpl" data-template="forbid">
+              <div class="tpl-head"><div class="tpl-title">Forbid</div><button class="add" data-add="forbid">Add Rule</button></div>
+              <div class="code-line"><span class="kw">forbid</span><span class="slot-wrap"><input class="slot" data-type="formula" data-slot="phi" placeholder="Formula" /><span class="slot-meta"></span></span></div>
+            </div>
+
+            <div class="tpl" data-template="require">
+              <div class="tpl-head"><div class="tpl-title">Require</div><button class="add" data-add="require">Add Rule</button></div>
+              <div class="code-line">
+                <span class="kw">require</span>
+                <span class="slot-wrap"><input class="slot" data-type="formula" data-slot="lhs" placeholder="Formula A" /><span class="slot-meta"></span></span>
+                <span>-></span>
+                <span class="slot-wrap"><input class="slot" data-type="formula" data-slot="rhs" placeholder="Formula B" /><span class="slot-meta"></span></span>
+              </div>
+            </div>
+
+            <div class="tpl" data-template="no_transition">
+              <div class="tpl-head"><div class="tpl-title">No Transition</div><button class="add" data-add="no_transition">Add Rule</button></div>
+              <div class="code-line">
+                <span class="kw">no_transition</span>
+                <span class="slot-wrap"><input class="slot" data-type="state" data-slot="src" placeholder="State" /><span class="slot-meta"></span></span>
+                <span>-></span>
+                <span class="slot-wrap"><input class="slot" data-type="state" data-slot="dst" placeholder="State" /><span class="slot-meta"></span></span>
+              </div>
+            </div>
+
+            <div class="tpl" data-template="bounded">
+              <div class="tpl-head"><div class="tpl-title">Bounded</div><button class="add" data-add="bounded">Add Rule</button></div>
+              <div class="code-line">
+                <span class="kw">bounded</span>
+                <span class="slot-wrap"><input class="slot" data-type="variable" data-slot="var" placeholder="Variable" /><span class="slot-meta"></span></span>
+                <span><=</span>
+                <span class="slot-wrap"><input class="slot" data-type="number" data-slot="num" placeholder="Number" /><span class="slot-meta"></span></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="row">
+          <button id="compileNow" class="add">Compile Current Rules</button>
+          <button id="clearRules" class="warn">Clear Rules</button>
+          <button id="clearSymbols">Clear Symbols</button>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div>
+          <p><strong>Generated Symbolic DSL</strong></p>
+          <div style="max-height:220px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#fff;">
+            <table>
+              <thead><tr><th>#</th><th>Rule</th><th>Action</th></tr></thead>
+              <tbody id="ruleRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      <article class="card stack">
+        <div>
+          <p><strong>Symbol Library (Drag Into Same-Type Boxes)</strong></p>
+          <div id="symbolGroups" class="symbols"></div>
+        </div>
+
+        <div>
+          <p><strong>Symbol : Original String Mapping</strong></p>
+          <div style="max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#fff;">
+            <table>
+              <thead><tr><th>Type</th><th>Symbol</th><th>Original String</th></tr></thead>
+              <tbody id="mapRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <p><strong>LTL (Conjunction, Symbolic)</strong></p>
+          <pre id="ltlCombined" class="mono">(compile to generate)</pre>
+        </div>
+
+        <div>
+          <p><strong>Per Rule Translation</strong></p>
+          <div style="max-height:280px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#fff;">
+            <table>
+              <thead><tr><th>#</th><th>DSL</th><th>LTL</th></tr></thead>
+              <tbody id="ltlRows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="foot">Types: <code>S*</code> state, <code>V*</code> variable, <code>N*</code> number, <code>F*</code> formula. Drag/drop is type-constrained.</p>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const TYPE_INFO = {
+      state: { prefix: 'S', label: 'State' },
+      variable: { prefix: 'V', label: 'Variable' },
+      number: { prefix: 'N', label: 'Number' },
+      formula: { prefix: 'F', label: 'Formula' }
+    };
+
+    const counters = { state: 0, variable: 0, number: 0, formula: 0 };
+    const valueToSymbol = new Map();
+    const symbolToValue = new Map();
+    const rules = [];
+    let currentDrag = null;
+
+    const statusEl = document.getElementById('status');
+    const ruleRowsEl = document.getElementById('ruleRows');
+    const mapRowsEl = document.getElementById('mapRows');
+    const symbolGroupsEl = document.getElementById('symbolGroups');
+    const ltlCombinedEl = document.getElementById('ltlCombined');
+    const ltlRowsEl = document.getElementById('ltlRows');
+    const dslInputEl = document.getElementById('dslInput');
+    const exampleSetEl = document.getElementById('exampleSet');
+
+    const exampleSets = {
+      core: [
+        'invariant !(grant1 && grant2)',
+        'forbid (state == ViolationLost)',
+        'require (event == RB) -> (event == RB_loc)',
+        'require (branch == Main) -> !(event == CO)',
+        'no_transition NeedImmediateForcePush -> ViolationMissedImmediateForcePush',
+        'bounded count <= 8'
+      ],
+      git_safety: [
+        'forbid (event == RB_pub)',
+        'forbid (event == MG)',
+        'require (event == PU) -> (sync == Ahead)',
+        'forbid ((divergence == Div) and (event == RB_fail))',
+        'forbid (event == RefBackMove)',
+        'require (event == PUF) -> (auth == Auth)'
+      ],
+      guards: [
+        'require (mode == Detached) -> not (event == PU)',
+        'forbid ((branch == Main) and (event == CO))',
+        'require (branch == Main) -> not (event == CO)',
+        'require (state == H_BranchRequired) -> not (event == CO)',
+        'forbid (sync == Diverged)',
+        'forbid (state == B_Diverged or state == H_Diverged)'
+      ],
+      transition: [
+        'invariant (acyclic == true)',
+        'no_transition NeedImmediateForcePush -> ViolationMissedImmediateForcePush',
+        'require (event == RB) -> (event == RB_loc)',
+        'forbid (state == ViolationLost)',
+        'bounded count <= 8'
+      ]
+    };
+
+    const randomPool = [
+      'invariant !(grant1 && grant2)',
+      'forbid (state == ViolationLost)',
+      'forbid (event == RB_pub)',
+      'require (event == RB) -> (event == RB_loc)',
+      'forbid (event == MG)',
+      'require (mode == Detached) -> not (event == PU)',
+      'forbid ((branch == Main) and (event == CO))',
+      'require (state == H_BranchRequired) -> not (event == CO)',
+      'require (event == PU) -> (sync == Ahead)',
+      'forbid ((divergence == Div) and (event == RB_fail))',
+      'forbid (event == RefBackMove)',
+      'require (event == PUF) -> (auth == Auth)',
+      'no_transition NeedImmediateForcePush -> ViolationMissedImmediateForcePush',
+      'bounded count <= 8'
+    ];
+
+    function setStatus(msg, isError = false) {
+      statusEl.textContent = msg;
+      statusEl.className = `status ${isError ? 'error' : 'ok'}`;
+    }
+
+    function escapeHtml(s) {
+      return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function keyFor(type, raw) {
+      return `${type}||${raw.trim()}`;
+    }
+
+    function lookupSymbol(type, rawInput) {
+      const raw = rawInput.trim();
+      const key = keyFor(type, raw);
+      return valueToSymbol.get(key) || null;
+    }
+
+    function getOrCreateSymbol(type, rawInput) {
+      const raw = rawInput.trim();
+      const key = keyFor(type, raw);
+      if (valueToSymbol.has(key)) return valueToSymbol.get(key);
+      counters[type] += 1;
+      const symbol = `${TYPE_INFO[type].prefix}${counters[type]}`;
+      valueToSymbol.set(key, symbol);
+      symbolToValue.set(symbol, { type, value: raw });
+      renderSymbolLibrary();
+      renderMappingTable();
+      return symbol;
+    }
+
+    function validateSlotType(type, raw) {
+      if (!raw) return 'Value is required.';
+      if (type === 'number' && !/^-?\d+(?:\.\d+)?$/.test(raw)) return 'Number box requires a numeric value.';
+      return null;
+    }
+
+    function attachSlotBehavior(slotEl) {
+      const metaEl = slotEl.parentElement.querySelector('.slot-meta');
+
+      function refreshMeta() {
+        const type = slotEl.dataset.type;
+        const raw = slotEl.value.trim();
+        if (!raw) {
+          slotEl.dataset.symbol = '';
+          metaEl.textContent = '';
+          return;
+        }
+        const err = validateSlotType(type, raw);
+        if (err) {
+          slotEl.dataset.symbol = '';
+          metaEl.textContent = err;
+          return;
+        }
+        const sym = lookupSymbol(type, raw);
+        if (sym) {
+          slotEl.dataset.symbol = sym;
+          metaEl.textContent = `${sym} = ${raw}`;
+        } else {
+          slotEl.dataset.symbol = '';
+          metaEl.textContent = `${TYPE_INFO[type].label} ready`;
+        }
+      }
+
+      slotEl.addEventListener('input', refreshMeta);
+      slotEl.addEventListener('blur', refreshMeta);
+
+      slotEl.addEventListener('dragover', (e) => {
+        const draggedType = (currentDrag && currentDrag.type) || e.dataTransfer.getData('text/type');
+        if (draggedType && draggedType === slotEl.dataset.type) {
+          e.preventDefault();
+          slotEl.classList.add('drag-ok');
+          slotEl.classList.remove('drag-bad');
+        } else {
+          slotEl.classList.add('drag-bad');
+        }
+      });
+
+      slotEl.addEventListener('dragleave', () => slotEl.classList.remove('drag-ok', 'drag-bad'));
+
+      slotEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        slotEl.classList.remove('drag-ok', 'drag-bad');
+        const draggedType = (currentDrag && currentDrag.type) || e.dataTransfer.getData('text/type');
+        const draggedValue = (currentDrag && currentDrag.value) || e.dataTransfer.getData('text/value');
+        if (!draggedType || draggedType !== slotEl.dataset.type) {
+          setStatus(`Type mismatch: cannot drop ${draggedType || 'unknown'} into ${slotEl.dataset.type} box.`, true);
+          return;
+        }
+        slotEl.value = draggedValue;
+        slotEl.dispatchEvent(new Event('input'));
+      });
+    }
+
+    function renderSymbolLibrary() {
+      symbolGroupsEl.innerHTML = '';
+      Object.entries(TYPE_INFO).forEach(([type, info]) => {
+        const items = Array.from(symbolToValue.entries())
+          .filter(([, p]) => p.type === type)
+          .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
+
+        const group = document.createElement('section');
+        group.className = 'sym-group';
+        group.innerHTML = `<p class="sym-head">${info.label}</p><div class="chips"></div>`;
+        const chips = group.querySelector('.chips');
+
+        if (!items.length) {
+          chips.innerHTML = '<span class="foot">(none)</span>';
+        } else {
+          items.forEach(([symbol, payload]) => {
+            const chip = document.createElement('div');
+            chip.className = 'chip';
+            chip.draggable = true;
+            chip.innerHTML = `<span>${escapeHtml(symbol)}</span><span class="raw">= ${escapeHtml(payload.value)}</span>`;
+            chip.addEventListener('dragstart', (e) => {
+              currentDrag = { symbol, type: payload.type, value: payload.value };
+              e.dataTransfer.effectAllowed = 'copy';
+              // Keep plain text payload for compatibility across browsers.
+              e.dataTransfer.setData('text/plain', JSON.stringify(currentDrag));
+              e.dataTransfer.setData('text/symbol', symbol);
+              e.dataTransfer.setData('text/type', payload.type);
+              e.dataTransfer.setData('text/value', payload.value);
+            });
+            chip.addEventListener('dragend', () => { currentDrag = null; });
+            chips.appendChild(chip);
+          });
+        }
+        symbolGroupsEl.appendChild(group);
+      });
+    }
+
+    function renderMappingTable() {
+      mapRowsEl.innerHTML = '';
+      const entries = Array.from(symbolToValue.entries())
+        .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
+      if (!entries.length) {
+        mapRowsEl.innerHTML = '<tr><td colspan="3">(no mappings yet)</td></tr>';
+        return;
+      }
+      entries.forEach(([symbol, payload]) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(payload.type)}</td><td><code>${escapeHtml(symbol)}</code></td><td>${escapeHtml(payload.value)}</td>`;
+        mapRowsEl.appendChild(tr);
+      });
+    }
+
+    function splitTopLevelArrow(expr) {
+      let depth = 0;
+      for (let i = 0; i < expr.length - 1; i++) {
+        if (expr[i] === '(') depth++;
+        if (expr[i] === ')') depth = Math.max(0, depth - 1);
+        if (depth === 0 && expr[i] === '-' && expr[i + 1] === '>') return [expr.slice(0, i).trim(), expr.slice(i + 2).trim()];
+      }
+      return null;
+    }
+
+    function parseStrictLine(rawLine, lineNo) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#') || line.startsWith('//')) return null;
+      if (/;\s*$/.test(line)) throw new Error(`Line ${lineNo}: trailing semicolons are not allowed.`);
+      if (/^safety\b/i.test(line)) throw new Error(`Line ${lineNo}: 'safety' prefix is not part of the DSL syntax.`);
+      if (/^(invariant|forbid|require|no_transition|bounded)\s*:/i.test(line)) throw new Error(`Line ${lineNo}: keyword colon form is not allowed.`);
+      if (/\\[nrt]/.test(line)) throw new Error(`Line ${lineNo}: escaped sequences like \\n are invalid; use real new lines.`);
+
+      if (/^invariant\s+/i.test(line)) return { kind: 'invariant', phi: line.replace(/^invariant\s+/i, '').trim() };
+      if (/^forbid\s+/i.test(line)) return { kind: 'forbid', phi: line.replace(/^forbid\s+/i, '').trim() };
+      if (/^require\s+/i.test(line)) {
+        const body = line.replace(/^require\s+/i, '').trim();
+        const parts = splitTopLevelArrow(body);
+        if (!parts || !parts[0] || !parts[1]) throw new Error(`Line ${lineNo}: require must use 'require A -> B'.`);
+        return { kind: 'require', lhs: parts[0], rhs: parts[1] };
+      }
+      if (/^no_transition\s+/i.test(line)) {
+        const m = line.replace(/^no_transition\s+/i, '').trim().match(/^([A-Za-z_][\w]*)\s*->\s*([A-Za-z_][\w]*)$/);
+        if (!m) throw new Error(`Line ${lineNo}: no_transition must use 'no_transition S1 -> S2'.`);
+        return { kind: 'no_transition', src: m[1], dst: m[2] };
+      }
+      if (/^bounded\s+/i.test(line)) {
+        const m = line.replace(/^bounded\s+/i, '').trim().match(/^([A-Za-z_][\w]*)\s*<=\s*(-?\d+(?:\.\d+)?)$/);
+        if (!m) throw new Error(`Line ${lineNo}: bounded must use 'bounded variable <= number'.`);
+        return { kind: 'bounded', variable: m[1], number: m[2] };
+      }
+
+      throw new Error(`Line ${lineNo}: unknown construct.`);
+    }
+
+    function createRule(kind, raw) {
+      if (kind === 'invariant') {
+        const f = getOrCreateSymbol('formula', raw.phi);
+        return { dsl: `invariant ${f}`, ltl: `G(${f})` };
+      }
+      if (kind === 'forbid') {
+        const f = getOrCreateSymbol('formula', raw.phi);
+        return { dsl: `forbid ${f}`, ltl: `G(!(${f}))` };
+      }
+      if (kind === 'require') {
+        const l = getOrCreateSymbol('formula', raw.lhs);
+        const r = getOrCreateSymbol('formula', raw.rhs);
+        return { dsl: `require ${l} -> ${r}`, ltl: `G((${l}) -> (${r}))` };
+      }
+      if (kind === 'no_transition') {
+        const s1 = getOrCreateSymbol('state', raw.src);
+        const s2 = getOrCreateSymbol('state', raw.dst);
+        return { dsl: `no_transition ${s1} -> ${s2}`, ltl: `G((state == ${s1}) -> X(!(state == ${s2})))` };
+      }
+      if (kind === 'bounded') {
+        const v = getOrCreateSymbol('variable', raw.variable);
+        const n = getOrCreateSymbol('number', String(raw.number));
+        return { dsl: `bounded ${v} <= ${n}`, ltl: `G((${v}) <= (${n}))` };
+      }
+      throw new Error('Unsupported rule kind.');
+    }
+
+    function renderRules() {
+      if (!rules.length) {
+        ruleRowsEl.innerHTML = '<tr><td colspan=\"3\">(no rules yet)</td></tr>';
+        return;
+      }
+      ruleRowsEl.innerHTML = '';
+      rules.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i + 1}</td><td><code>${escapeHtml(r.dsl)}</code></td><td><button type=\"button\" data-remove-rule=\"${i}\">Remove</button></td>`;
+        ruleRowsEl.appendChild(tr);
+      });
+    }
+
+    function compileRules() {
+      ltlRowsEl.innerHTML = '';
+      if (!rules.length) {
+        ltlCombinedEl.textContent = '(compile to generate)';
+        return;
+      }
+
+      rules.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${idx + 1}</td><td><code>${escapeHtml(r.dsl)}</code></td><td><code>${escapeHtml(r.ltl)}</code></td>`;
+        ltlRowsEl.appendChild(tr);
+      });
+
+      ltlCombinedEl.textContent = rules.map(r => `(${r.ltl})`).join(' &&\n');
+    }
+
+    function addRuleFromTemplate(kind) {
+      const tpl = document.querySelector(`.tpl[data-template="${kind}"]`);
+      const slots = Array.from(tpl.querySelectorAll('.slot'));
+      const raw = {};
+
+      for (const slot of slots) {
+        const type = slot.dataset.type;
+        const value = slot.value.trim();
+        const err = validateSlotType(type, value);
+        if (err) {
+          setStatus(`${kind}: ${err}`, true);
+          slot.focus();
+          return;
+        }
+        raw[slot.dataset.slot] = value;
+        const sym = getOrCreateSymbol(type, value);
+        slot.dataset.symbol = sym;
+        const meta = slot.parentElement.querySelector('.slot-meta');
+        meta.textContent = `${sym} = ${value}`;
+      }
+
+      let rule;
+      if (kind === 'invariant') rule = createRule('invariant', { phi: raw.phi });
+      if (kind === 'forbid') rule = createRule('forbid', { phi: raw.phi });
+      if (kind === 'require') rule = createRule('require', { lhs: raw.lhs, rhs: raw.rhs });
+      if (kind === 'no_transition') rule = createRule('no_transition', { src: raw.src, dst: raw.dst });
+      if (kind === 'bounded') rule = createRule('bounded', { variable: raw.var, number: raw.num });
+
+      rules.push(rule);
+      renderRules();
+      compileRules();
+      setStatus(`Added rule: ${rule.dsl}`);
+    }
+
+    function importDslLines(lines, replaceExisting = false) {
+      try {
+        const parsed = [];
+        const arr = lines.split(/\r?\n/);
+        for (let i = 0; i < arr.length; i++) {
+          const p = parseStrictLine(arr[i], i + 1);
+          if (p) parsed.push(p);
+        }
+        if (!parsed.length) {
+          setStatus('No valid DSL rules found to import.', true);
+          return;
+        }
+
+        if (replaceExisting) rules.length = 0;
+
+        parsed.forEach((p) => rules.push(createRule(p.kind, p)));
+        renderRules();
+        compileRules();
+        setStatus(`Imported ${parsed.length} rule(s).`);
+      } catch (err) {
+        setStatus(err.message || 'Import failed.', true);
+      }
+    }
+
+    function shuffledSample(items, count) {
+      const copy = [...items];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy.slice(0, Math.max(1, Math.min(count, copy.length)));
+    }
+
+    function clearTemplateInputs() {
+      document.querySelectorAll('.slot').forEach((slot) => {
+        slot.value = '';
+        slot.dataset.symbol = '';
+        const meta = slot.parentElement.querySelector('.slot-meta');
+        meta.textContent = '';
+      });
+    }
+
+    function clearSymbols() {
+      Object.keys(counters).forEach((k) => counters[k] = 0);
+      valueToSymbol.clear();
+      symbolToValue.clear();
+      renderSymbolLibrary();
+      renderMappingTable();
+      // Rebuild symbols from existing rules would require raw payloads. We keep symbols cleared and rules cleared together.
+      rules.length = 0;
+      renderRules();
+      compileRules();
+      clearTemplateInputs();
+      setStatus('Cleared symbols and rules.');
+    }
+
+    document.querySelectorAll('.slot').forEach(attachSlotBehavior);
+
+    document.querySelectorAll('button[data-add]').forEach((btn) => {
+      btn.addEventListener('click', () => addRuleFromTemplate(btn.dataset.add));
+    });
+
+    document.getElementById('compileNow').addEventListener('click', () => {
+      compileRules();
+      setStatus(`Compiled ${rules.length} rule(s).`);
+    });
+
+    ruleRowsEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-remove-rule]');
+      if (!btn) return;
+      const idx = Number(btn.dataset.removeRule);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= rules.length) return;
+      rules.splice(idx, 1);
+      renderRules();
+      compileRules();
+      setStatus(`Removed rule #${idx + 1}.`);
+    });
+
+    document.getElementById('clearRules').addEventListener('click', () => {
+      rules.length = 0;
+      renderRules();
+      compileRules();
+      setStatus('Cleared rules.');
+    });
+
+    document.getElementById('clearSymbols').addEventListener('click', clearSymbols);
+
+    document.getElementById('importDsl').addEventListener('click', () => importDslLines(dslInputEl.value, false));
+    document.getElementById('clearDsl').addEventListener('click', () => { dslInputEl.value = ''; });
+
+    document.getElementById('loadExample').addEventListener('click', () => {
+      const key = exampleSetEl.value;
+      const lines = (exampleSets[key] || exampleSets.core).join('\n');
+      dslInputEl.value = lines;
+      importDslLines(lines, false);
+    });
+
+    document.getElementById('shuffleExample').addEventListener('click', () => {
+      const count = 5 + Math.floor(Math.random() * 4);
+      const lines = shuffledSample(randomPool, count).join('\n');
+      dslInputEl.value = lines;
+      importDslLines(lines, false);
+    });
+
+    renderSymbolLibrary();
+    renderMappingTable();
+    renderRules();
+    compileRules();
+  </script>
+</body>
+</html>
