@@ -4,3 +4,13 @@ FSM安全性质及写法.pdf
 
 # Intermediate page
 template_builder.html
+
+# Local JS dependencies
+node_modules/
+
+# Coq build artifacts
+*.vo
+*.glob
+*.vok
+*.vos
+*.aux

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>jsCoq Logic Check Playground</title>
+  <link rel="stylesheet" type="text/css" href="./node_modules/jscoq/dist/frontend/index.css">
+  <style>
+    body { font-family: "IBM Plex Sans", "Segoe UI", sans-serif; margin: 16px; color: #1d2018; }
+    h1 { margin: 0 0 8px; }
+    .note { color: #4f5a4a; margin: 0 0 12px; }
+    .status { margin: 0 0 12px; font-size: 0.92rem; font-weight: 700; }
+    .ok { color: #166534; }
+    .err { color: #b42318; white-space: pre-wrap; }
+    #document { max-width: 1200px; }
+    #ide-wrapper { height: 70vh; border: 1px solid #d9dfd3; border-radius: 8px; }
+    code { background: #f2f5ef; padding: 1px 4px; border-radius: 4px; }
+  </style>
+</head>
+<body class="jscoq-main">
+  <div id="document">
+    <h1>jsCoq Logic-Level Checker</h1>
+    <p class="note">This page runs Coq directly in browser (jsCoq). It is suitable for proof obligations and consistency checks.
+      Load this page via a local server (not <code>file://</code>).</p>
+    <p id="status" class="status">Loading jsCoq...</p>
+
+    <div id="ide-wrapper" class="toggled" data-filename="logic_check.v"></div>
+  </div>
+
+  <script type="module">
+    import { JsCoq } from './node_modules/jscoq/jscoq.js';
+
+    const defaultCode = `(* jsCoq starter script for logic-level sanity checks *)
+
+Require Import Coq.Logic.Classical_Prop.
+
+Section SilentErrorChecks.
+  Variables A B C : Prop.
+
+  (* Example 1: tautology detection pattern *)
+  Lemma tautology_example : A -> A.
+  Proof.
+    intro H.
+    exact H.
+  Qed.
+
+  (* Example 2: contradiction / unsat pattern *)
+  Lemma contradiction_example : (A /\\ ~A) -> False.
+  Proof.
+    intro H.
+    destruct H as [HA HnA].
+    apply HnA.
+    exact HA.
+  Qed.
+
+  (* Example 3: implication normalization shape *)
+  Lemma require_shape_example : (A -> B) -> (~B -> ~A).
+  Proof.
+    intros HAB HnB HA.
+    apply HnB.
+    apply HAB.
+    exact HA.
+  Qed.
+End SilentErrorChecks.
+`;
+    const params = new URLSearchParams(window.location.search);
+    const injected = params.get('src') === 'dsl4fsm' ? localStorage.getItem('dsl4fsm.coq_script') : null;
+
+    function sanitizeCoqScript(src) {
+      return src
+        .replace(/\uFEFF/g, '')            // BOM
+        .replace(/\r\n?/g, '\n')
+        .replace(/↔/g, '<->')
+        .replace(/→/g, '->')
+        .replace(/∧/g, '/\\')
+        .replace(/∨/g, '\\/')
+        .replace(/¬/g, '~')
+        .replace(/⊤/g, 'True')
+        .replace(/⊥/g, 'False')
+        // Recovery for stale/generated payloads where "Prop" got truncated to "P".
+        .replace(/(\b(?:Variables|Parameter)\b[^\n:]*:\s*)P\./g, '$1Prop.')
+        .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, ''); // keep printable ASCII + whitespace
+    }
+
+    const code = (injected && injected.trim()) ? sanitizeCoqScript(injected) : defaultCode;
+
+    const jscoq_opts = {
+      backend: 'wa',
+      subproc: false,
+      node_modules_path: './node_modules/',
+      implicit_libs: true,
+      file_dialog: false,
+      editor: { mode: { 'company-coq': true }, keyMap: 'default' },
+      init_pkgs: ['init'],
+      all_pkgs: ['coq']
+    };
+
+    const statusEl = document.getElementById('status');
+    try {
+      const coq = await JsCoq.start(jscoq_opts);
+      window.coq = coq;
+      await coq.provider.load(code, 'logic_check.v');
+      statusEl.textContent = 'jsCoq loaded. Use Alt+N / Alt+Enter to step through proofs.';
+      statusEl.classList.add('ok');
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = `jsCoq failed to initialize.\n${err?.message || String(err)}\nCheck browser DevTools console for details.`;
+      statusEl.classList.add('err');
+    }
+  </script>
+</body>
+</html>

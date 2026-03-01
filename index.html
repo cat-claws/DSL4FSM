@@ -270,6 +270,16 @@
         </div>
 
         <div>
+          <p><strong>Simplified LTL (Syntactic)</strong></p>
+          <pre id="ltlSimplified" class="mono">(compile to generate)</pre>
+        </div>
+
+        <div>
+          <p><strong>Logic-Level Verification Commands (Spot)</strong></p>
+          <pre id="spotCmds" class="mono">(compile to generate commands)</pre>
+        </div>
+
+        <div>
           <p><strong>Per Rule Translation</strong></p>
           <div style="max-height:280px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#fff;">
             <table>
@@ -279,7 +289,7 @@
           </div>
         </div>
 
-        <p class="foot">Types: <code>S*</code> state, <code>V*</code> variable, <code>N*</code> number, <code>F*</code> formula. Drag/drop is type-constrained.</p>
+        <p class="foot">Types: <code>S*</code> state, <code>V*</code> variable, <code>N*</code> number, <code>F*</code> formula. Drag/drop is type-constrained. Simplified LTL is proof-safe in jsCoq (dedup + neutral-term handling).</p>
       </article>
     </section>
   </main>
@@ -303,9 +313,12 @@
     const mapRowsEl = document.getElementById('mapRows');
     const symbolGroupsEl = document.getElementById('symbolGroups');
     const ltlCombinedEl = document.getElementById('ltlCombined');
+    const ltlSimplifiedEl = document.getElementById('ltlSimplified');
+    const spotCmdsEl = document.getElementById('spotCmds');
     const ltlRowsEl = document.getElementById('ltlRows');
     const dslInputEl = document.getElementById('dslInput');
     const exampleSetEl = document.getElementById('exampleSet');
+    let simplifyReqSeq = 0;
 
     const exampleSets = {
       core: [
@@ -553,26 +566,26 @@
     function createRule(kind, raw) {
       if (kind === 'invariant') {
         const f = getOrCreateSymbol('formula', raw.phi);
-        return { dsl: `invariant ${f}`, ltl: `G(${f})` };
+        return { kind, payload: { f }, dsl: `invariant ${f}`, ltl: `G(${f})` };
       }
       if (kind === 'forbid') {
         const f = getOrCreateSymbol('formula', raw.phi);
-        return { dsl: `forbid ${f}`, ltl: `G(!(${f}))` };
+        return { kind, payload: { f }, dsl: `forbid ${f}`, ltl: `G(!(${f}))` };
       }
       if (kind === 'require') {
         const l = getOrCreateSymbol('formula', raw.lhs);
         const r = getOrCreateSymbol('formula', raw.rhs);
-        return { dsl: `require ${l} -> ${r}`, ltl: `G((${l}) -> (${r}))` };
+        return { kind, payload: { l, r }, dsl: `require ${l} -> ${r}`, ltl: `G((${l}) -> (${r}))` };
       }
       if (kind === 'no_transition') {
         const s1 = getOrCreateSymbol('state', raw.src);
         const s2 = getOrCreateSymbol('state', raw.dst);
-        return { dsl: `no_transition ${s1} -> ${s2}`, ltl: `G((state == ${s1}) -> X(!(state == ${s2})))` };
+        return { kind, payload: { s1, s2 }, dsl: `no_transition ${s1} -> ${s2}`, ltl: `G((state == ${s1}) -> X(!(state == ${s2})))` };
       }
       if (kind === 'bounded') {
         const v = getOrCreateSymbol('variable', raw.variable);
         const n = getOrCreateSymbol('number', String(raw.number));
-        return { dsl: `bounded ${v} <= ${n}`, ltl: `G((${v}) <= (${n}))` };
+        return { kind, payload: { v, n }, dsl: `bounded ${v} <= ${n}`, ltl: `G((${v}) <= (${n}))` };
       }
       throw new Error('Unsupported rule kind.');
     }
@@ -590,10 +603,81 @@
       });
     }
 
+    function simplifyLtlFormula(expr) {
+      // Keep only normalization that is proof-safe under atom abstraction.
+      return expr.replace(/\s+/g, ' ').trim();
+    }
+
+    function simplifyConjunction(formulas) {
+      const simplified = formulas.map(simplifyLtlFormula);
+      const unique = [];
+      const seen = new Set();
+      simplified.forEach((f) => {
+        if (f === 'G(true)') return;
+        if (!seen.has(f)) {
+          seen.add(f);
+          unique.push(f);
+        }
+      });
+      if (!unique.length) return { list: ['G(true)'], text: 'G(true)' };
+      if (unique.includes('G(false)')) return { list: ['G(false)'], text: 'G(false)' };
+      return { list: unique, text: unique.map((f) => `(${f})`).join(' &&\n') };
+    }
+
+    function shellQuote(s) {
+      return `'${s.replace(/'/g, `'\"'\"'`)}'`;
+    }
+
+    function buildSpotCommands(original, simplified) {
+      const o = shellQuote(original);
+      const s = shellQuote(simplified);
+      return [
+        '# 1) Semantic equivalence: original vs simplified',
+        `ltlfilt -c -f ${o} --equivalent-to ${s}`,
+        '',
+        '# 2) Silent-error checks (tautology / inconsistency)',
+        `ltlfilt -c -f ${o} --equivalent-to 'true'`,
+        `ltlfilt -c -f ${o} --equivalent-to 'false'`,
+        `ltlfilt -c -f ${s} --equivalent-to 'true'`,
+        `ltlfilt -c -f ${s} --equivalent-to 'false'`,
+        '',
+        '# 3) One-shot checker script in this repo',
+        `./tools/logic_check.sh ${o} ${s}`
+      ].join('\n');
+    }
+
+    async function simplifyWithCoq(formulas) {
+      const endpoints = [
+        'http://127.0.0.1:8081/api/coq/simplify',
+        'http://localhost:8081/api/coq/simplify',
+        'http://127.0.0.1:8811/api/coq/simplify',
+        'http://localhost:8811/api/coq/simplify'
+      ];
+      let lastErr = null;
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ formulas })
+          });
+          if (!res.ok) throw new Error(`Coq simplify API HTTP ${res.status} at ${url}`);
+          const data = await res.json();
+          if (!data.ok) throw new Error(data.error || `Coq simplify API failed at ${url}`);
+          return data;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      throw new Error(`Cannot reach Coq simplify server on port 8081/8811. Start: 'python tools/coq_simplify_server.py'. Last error: ${lastErr?.message || 'unknown'}`);
+    }
+
     function compileRules() {
       ltlRowsEl.innerHTML = '';
       if (!rules.length) {
         ltlCombinedEl.textContent = '(compile to generate)';
+        ltlSimplifiedEl.textContent = '(compile to generate)';
+        spotCmdsEl.textContent = '(compile to generate commands)';
         return;
       }
 
@@ -603,7 +687,22 @@
         ltlRowsEl.appendChild(tr);
       });
 
-      ltlCombinedEl.textContent = rules.map(r => `(${r.ltl})`).join(' &&\n');
+      const formulas = rules.map((r) => r.ltl);
+      const original = formulas.map((f) => `(${f})`).join(' &&\n');
+      const simplified = simplifyConjunction(formulas); // local fallback
+      ltlCombinedEl.textContent = original;
+      ltlSimplifiedEl.textContent = simplified.text;
+      spotCmdsEl.textContent = buildSpotCommands(original, simplified.text);
+
+      const reqId = ++simplifyReqSeq;
+      simplifyWithCoq(formulas).then((data) => {
+        if (reqId !== simplifyReqSeq) return;
+        ltlSimplifiedEl.textContent = data.text || 'G(true)';
+        spotCmdsEl.textContent = buildSpotCommands(original, data.text || 'G(true)');
+      }).catch((err) => {
+        if (reqId !== simplifyReqSeq) return;
+        setStatus(`Coq simplifier unavailable, using local fallback: ${err.message}`, true);
+      });
     }
 
     function addRuleFromTemplate(kind) {
