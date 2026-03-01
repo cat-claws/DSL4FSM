@@ -150,3 +150,65 @@ The web tooling stores user-entered strings as typed symbols and generates symbo
 A concise formulation for manuscript use:
 
 > We define a domain-specific safety language over finite-state transition systems with compositional semantics into Safety-LTL. The language supports invariants, forbiddance constraints, guarded requirements, explicit transition exclusions, and bounded numeric invariants. Each property is translated into either `G φ` or `G(φ -> X ψ)`, enabling reduction to finite bad-state reachability.
+
+## 11. Human Entry Guide (Reserved DSL + Natural Language Content)
+The intended authoring mode is:
+- keep DSL keywords fixed (`invariant`, `forbid`, `require`, `no_transition`, `bounded`)
+- allow users to type natural-language text inside formula slots
+
+Example:
+- `forbid "merge remote history into protected branch"`
+
+Here:
+- `forbid` is the reserved DSL keyword
+- the quoted text is user intent in natural language
+- the tool maps that text to an internal symbol and uses symbols in generated LTL
+
+### 11.1 Input templates
+Use these fixed templates:
+
+```text
+invariant "<natural-language condition>"
+forbid "<natural-language bad condition>"
+require "<natural-language precondition>" -> "<natural-language obligation>"
+no_transition "<from-state description>" -> "<to-state description>"
+bounded "<natural-language variable name>" <= <number>
+```
+
+### 11.2 LTL-compatible property set (supported in this DSL)
+The following are the compatible property intents to expose clearly in the UI.
+They all compile to the supported Safety-LTL fragment (`G φ` or `G(φ -> X ψ)`).
+
+| Human intent | User-entered DSL (natural text) | Recommended strict DSL syntax | LTL shape |
+|---|---|---|---|
+| Mutual exclusion of grants | `invariant "two different requesters are never granted at the same time"` | `invariant !(grant1 && grant2)` | `G φ` |
+| No commit-loss sink reached | `forbid "any state that represents lost commits is reached"` | `forbid (state == ViolationLost)` | `G !φ` |
+| Never rewrite published history | `forbid "an operation rewrites commits that are already published"` | `forbid (event == RB_pub)` | `G !φ` |
+| No merge in rebase-only policy | `forbid "a merge operation is performed"` | `forbid (event == MG)` | `G !φ` |
+| Detached-head implies no push | `require "the repository is in detached-head mode" -> "pushing is not allowed"` | `require (mode == Detached) -> !(event == PU)` | `G(φ -> ψ)` |
+| Main branch protected from direct commit | `require "the current branch is main" -> "direct commit is not allowed"` | `require (branch == Main) -> !(event == CO)` | `G(φ -> ψ)` |
+| Divergence state forbidden | `forbid "the local and remote histories are diverged"` | `forbid (sync == Diverged)` | `G !φ` |
+| Push allowed only when ahead | `require "a push is attempted" -> "the local branch is ahead of remote"` | `require (event == PU) -> (sync == Ahead)` | `G(φ -> ψ)` |
+| Rebase failure forbidden under divergence | `forbid "a rebase failure occurs while histories are diverged"` | `forbid ((divergence == Div) && (event == RB_fail))` | `G !φ` |
+| Immediate force-push obligation (state encoded) | `no_transition "state where immediate force-push is required" -> "violation state for missing immediate force-push"` | `no_transition NeedImmediateForcePush -> ViolationMissedImmediateForcePush` | `G(s1 -> X !s2)` |
+| Force-push requires authorization | `require "a force-push is requested" -> "the actor is authorized"` | `require (event == PUF) -> (auth == Auth)` | `G(φ -> ψ)` |
+| Bounded unpublished-commit count | `bounded "number of unpublished commits" <= 8` | `bounded count <= 8` | `G(x <= N)` |
+| Force-push allowed only for maintainers | `require "a force-push is requested" -> "the actor has maintainer role"` | `require (event == PUF) -> (role == Maintainer)` | `G(φ -> ψ)` |
+| Protected branch blocks normal push | `require "current branch is protected" -> "normal push is not allowed"` | `require (branch == Protected) -> !(event == PU)` | `G(φ -> ψ)` |
+| Protected branch blocks force-push | `forbid "force-push is attempted on a protected branch"` | `forbid ((branch == Protected) && (event == PUF))` | `G !φ` |
+| Detached mode blocks commit | `require "repository is detached" -> "commit is not allowed"` | `require (mode == Detached) -> !(event == CO)` | `G(φ -> ψ)` |
+| Rebase only when needed | `require "a rebase is requested" -> "branch is not already synchronized"` | `require (event == RB) -> (sync != Clean)` | `G(φ -> ψ)` |
+| Push only when network is available | `require "a push is attempted" -> "network is online"` | `require (event == PU) -> (network == Online)` | `G(φ -> ψ)` |
+| Retry budget bound | `bounded "number of retries" <= 3` | `bounded retry_count <= 3` | `G(x <= N)` |
+| Queue depth bound | `bounded "pending queue depth" <= 64` | `bounded queue_depth <= 64` | `G(x <= N)` |
+
+### 11.3 Not included in this DSL subset
+Drop these from the user-facing preset list unless they are first encoded into FSM states:
+- properties requiring `U` (Until), such as "after rejection, block push until rebase"
+- eventuality/liveness forms requiring `F` (Eventually)
+- multi-step obligations not reducible to `invariant/forbid/require/no_transition/bounded`
+
+### 11.4 Interpretation model
+- User text is treated as a domain phrase, not as strict logic syntax.
+- The system stores phrase-to-symbol mappings (for reuse and drag/drop).
+- Generated DSL/LTL uses symbols; mapping is shown to users for traceability.
