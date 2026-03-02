@@ -110,7 +110,8 @@
   </div>
 
   <script>
-    const API_BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:8800' : '';
+    const isLocalHost = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+    const API_BASE = (window.location.protocol === 'file:' || !isLocalHost) ? 'http://127.0.0.1:8800' : '';
 
     async function jget(url) {
       const r = await fetch(API_BASE + url);
