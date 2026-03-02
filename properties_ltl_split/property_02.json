@@ -1,0 +1,17 @@
+{
+  "type": "globally",
+  "operand": {
+    "type": "not",
+    "operand": {
+      "type": "eq",
+      "left": {
+        "type": "var",
+        "name": "The current high-level Git workflow state of the repository."
+      },
+      "right": {
+        "type": "enum",
+        "name": "A violation state indicating commits were lost."
+      }
+    }
+  }
+}

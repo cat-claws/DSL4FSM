@@ -1,0 +1,26 @@
+{
+  "source": "/common/home/users/r/rhzhang/property/properties_ltl.json",
+  "parts": 20,
+  "files": [
+    "property_01.json",
+    "property_02.json",
+    "property_03.json",
+    "property_04.json",
+    "property_05.json",
+    "property_06.json",
+    "property_07.json",
+    "property_08.json",
+    "property_09.json",
+    "property_10.json",
+    "property_11.json",
+    "property_12.json",
+    "property_13.json",
+    "property_14.json",
+    "property_15.json",
+    "property_16.json",
+    "property_17.json",
+    "property_18.json",
+    "property_19.json",
+    "property_20.json"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "type": "globally",
+  "operand": {
+    "type": "implies",
+    "left": {
+      "type": "eq",
+      "left": {
+        "type": "var",
+        "name": "The current Git workflow action/event being attempted at this step."
+      },
+      "right": {
+        "type": "enum",
+        "name": "A normal push action to the remote repository."
+      }
+    },
+    "right": {
+      "type": "eq",
+      "left": {
+        "type": "var",
+        "name": "The current network availability status for remote operations."
+      },
+      "right": {
+        "type": "enum",
+        "name": "A network status indicating remote connectivity is available."
+      }
+    }
+  }
+}

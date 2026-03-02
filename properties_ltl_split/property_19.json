@@ -1,0 +1,14 @@
+{
+  "type": "globally",
+  "operand": {
+    "type": "le",
+    "left": {
+      "type": "var",
+      "name": "The number of retry attempts used by the workflow operation."
+    },
+    "right": {
+      "type": "number",
+      "value": 3
+    }
+  }
+}

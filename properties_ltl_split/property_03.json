@@ -1,0 +1,17 @@
+{
+  "type": "globally",
+  "operand": {
+    "type": "not",
+    "operand": {
+      "type": "eq",
+      "left": {
+        "type": "var",
+        "name": "The current Git workflow action/event being attempted at this step."
+      },
+      "right": {
+        "type": "enum",
+        "name": "A rebase action that rewrites commits already published to a remote repository."
+      }
+    }
+  }
+}

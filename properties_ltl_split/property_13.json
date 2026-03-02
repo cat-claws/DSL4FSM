@@ -1,0 +1,28 @@
+{
+  "type": "globally",
+  "operand": {
+    "type": "implies",
+    "left": {
+      "type": "eq",
+      "left": {
+        "type": "var",
+        "name": "The current Git workflow action/event being attempted at this step."
+      },
+      "right": {
+        "type": "enum",
+        "name": "A force-push action."
+      }
+    },
+    "right": {
+      "type": "eq",
+      "left": {
+        "type": "var",
+        "name": "The role assigned to the acting user."
+      },
+      "right": {
+        "type": "enum",
+        "name": "A maintainer-level role."
+      }
+    }
+  }
+}

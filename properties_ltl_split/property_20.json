@@ -1,0 +1,14 @@
+{
+  "type": "globally",
+  "operand": {
+    "type": "le",
+    "left": {
+      "type": "var",
+      "name": "The current depth of pending operations in the processing queue."
+    },
+    "right": {
+      "type": "number",
+      "value": 64
+    }
+  }
+}

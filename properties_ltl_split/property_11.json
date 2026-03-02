@@ -1,0 +1,28 @@
+{
+  "type": "globally",
+  "operand": {
+    "type": "implies",
+    "left": {
+      "type": "eq",
+      "left": {
+        "type": "var",
+        "name": "The current Git workflow action/event being attempted at this step."
+      },
+      "right": {
+        "type": "enum",
+        "name": "A force-push action."
+      }
+    },
+    "right": {
+      "type": "eq",
+      "left": {
+        "type": "var",
+        "name": "The current authorization status for sensitive operations."
+      },
+      "right": {
+        "type": "enum",
+        "name": "An authorized/authenticated status allowing the guarded action."
+      }
+    }
+  }
+}
