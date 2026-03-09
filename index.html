@@ -56,9 +56,6 @@
       background: #fff;
     }
 
-    .tpl-head { display: none; }
-    .tpl-title { display: none; }
-
     .code-line {
       display: flex;
       flex-wrap: wrap;
@@ -173,12 +170,32 @@
     .chip button {
       border: 1px solid #bbb;
       background: #fff;
-      padding: 0 4px;
-      margin-left: 2px;
       border-radius: 2px;
       font: 700 0.72rem/1 Arial, sans-serif;
       cursor: pointer;
       color: #444;
+    }
+
+    .chip .chip-promote {
+      margin-left: 4px;
+      padding: 3px 8px;
+      min-width: 30px;
+      min-height: 22px;
+      border-color: #8fb3ea;
+      background: #eaf2ff;
+      color: #194d99;
+      font-weight: 700;
+    }
+
+    .chip .chip-promote:hover {
+      background: #dce9ff;
+      border-color: #6f9de2;
+    }
+
+    .chip .chip-remove {
+      margin-left: 3px;
+      padding: 2px 6px;
+      min-height: 22px;
     }
 
     table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
@@ -405,16 +422,14 @@
       return `${text} is performed`;
     }
 
-    function ensureAp(text, preferredType = 'state') {
+    function ensureAp(text) {
       const clean = normalizeText(text);
       if (!clean) throw new Error('AP text is required.');
       const key = canonicalApKey(clean);
       if (apTextToId.has(key)) return apTextToId.get(key);
 
-      const type = preferredType === 'transition' ? 'transition' : 'state';
-
       const id = `A${++apCounter}`;
-      apStore.set(id, { id, text: clean, type });
+      apStore.set(id, { id, text: clean, type: 'state' });
       apTextToId.set(key, id);
       return id;
     }
@@ -453,6 +468,12 @@
       if (ast.type === 'not') {
         return { type: 'not', operand: expandFormulaAst(ast.operand, seen) };
       }
+      if (ast.type === 'globally') {
+        return { type: 'globally', operand: expandFormulaAst(ast.operand, seen) };
+      }
+      if (ast.type === 'next') {
+        return { type: 'next', operand: expandFormulaAst(ast.operand, seen) };
+      }
       if (ast.type === 'and' || ast.type === 'or' || ast.type === 'implies') {
         return {
           type: ast.type,
@@ -464,7 +485,7 @@
     }
 
     function resolvePropertyAst(propAst) {
-      if (propAst.type !== 'globally') return clone(propAst);
+      if (propAst.type !== 'globally') return expandFormulaAst(propAst);
       const op = propAst.operand;
       if (op && op.type === 'implies' && op.right && op.right.type === 'next') {
         return {
@@ -647,11 +668,12 @@
       const kind = slotEl.dataset.refKind || '';
       const id = slotEl.dataset.refId || '';
       const raw = normalizeText(slotEl.value || '');
+      const formulaKey = raw ? canonicalFormulaKey(raw) : '';
 
       if (kind === 'formula' && formulaStore.has(id)) return astFormulaRef(id);
       if (kind === 'ap' && apStore.has(id)) return astApRef(id);
-      if (raw && formulaTextToId.has(canonicalFormulaKey(raw))) {
-        return astFormulaRef(formulaTextToId.get(canonicalFormulaKey(raw)));
+      if (formulaKey && formulaTextToId.has(formulaKey)) {
+        return astFormulaRef(formulaTextToId.get(formulaKey));
       }
       if (raw) return astApRef(ensureAp(raw));
       throw new Error(`${fieldName} requires a formula/AP value.`);
@@ -772,6 +794,7 @@
       if (onPromoteToProperty) {
         const addP = document.createElement('button');
         addP.type = 'button';
+        addP.className = 'chip-promote';
         addP.textContent = '+P';
         addP.title = `Add ${id} as property`;
         addP.addEventListener('click', (e) => {
@@ -782,6 +805,7 @@
       }
       const del = document.createElement('button');
       del.type = 'button';
+      del.className = 'chip-remove';
       del.textContent = 'x';
       del.title = `Delete ${id}`;
       del.addEventListener('click', (e) => {
@@ -976,42 +1000,51 @@
       setStatus(`Added property ${id} from formula ${formulaId}.`);
     }
 
+    function getSlot(templateEl, key) {
+      const slot = templateEl.querySelector(`[data-slot-key="${key}"]`);
+      if (!slot) throw new Error(`Missing slot '${key}'.`);
+      return slot;
+    }
+
+    const FORMULA_TEMPLATE_BUILDERS = {
+      formula_ap: (tpl) => astApRef(apRefBySlot(getSlot(tpl, 'ap'), 'AP')),
+      formula_not: (tpl) => ({ type: 'not', operand: formulaNodeBySlot(getSlot(tpl, 'operand'), 'Operand') }),
+      formula_and: (tpl) => ({
+        type: 'and',
+        left: formulaNodeBySlot(getSlot(tpl, 'left'), 'Left operand'),
+        right: formulaNodeBySlot(getSlot(tpl, 'right'), 'Right operand')
+      }),
+      formula_or: (tpl) => ({
+        type: 'or',
+        left: formulaNodeBySlot(getSlot(tpl, 'left'), 'Left operand'),
+        right: formulaNodeBySlot(getSlot(tpl, 'right'), 'Right operand')
+      }),
+      formula_implies: (tpl) => ({
+        type: 'implies',
+        left: formulaNodeBySlot(getSlot(tpl, 'left'), 'Left operand'),
+        right: formulaNodeBySlot(getSlot(tpl, 'right'), 'Right operand')
+      }),
+      formula_always: (tpl) => ({
+        type: 'globally',
+        operand: formulaNodeBySlot(getSlot(tpl, 'formula'), 'Formula')
+      }),
+      formula_always_next: (tpl) => ({
+        type: 'globally',
+        operand: {
+          type: 'implies',
+          left: formulaNodeBySlot(getSlot(tpl, 'left'), 'Left formula'),
+          right: { type: 'next', operand: formulaNodeBySlot(getSlot(tpl, 'right'), 'Right formula') }
+        }
+      })
+    };
+
     function addFormula(templateName, templateEl) {
       try {
-        let ast;
-        if (templateName === 'formula_ap') {
-          const slot = templateEl.querySelector('[data-slot-key="ap"]');
-          const apId = apRefBySlot(slot, 'AP');
-          ast = astApRef(apId);
-        } else if (templateName === 'formula_not') {
-          const slot = templateEl.querySelector('[data-slot-key="operand"]');
-          ast = { type: 'not', operand: formulaNodeBySlot(slot, 'Operand') };
-        } else if (templateName === 'formula_and' || templateName === 'formula_or' || templateName === 'formula_implies') {
-          const leftSlot = templateEl.querySelector('[data-slot-key="left"]');
-          const rightSlot = templateEl.querySelector('[data-slot-key="right"]');
-          const leftNode = formulaNodeBySlot(leftSlot, 'Left operand');
-          const rightNode = formulaNodeBySlot(rightSlot, 'Right operand');
-          const nodeType = templateName === 'formula_and' ? 'and' : templateName === 'formula_or' ? 'or' : 'implies';
-          ast = { type: nodeType, left: leftNode, right: rightNode };
-        } else if (templateName === 'formula_always') {
-          const slot = templateEl.querySelector('[data-slot-key="formula"]');
-          ast = { type: 'globally', operand: formulaNodeBySlot(slot, 'Formula') };
-        } else if (templateName === 'formula_always_next') {
-          const leftSlot = templateEl.querySelector('[data-slot-key="left"]');
-          const rightSlot = templateEl.querySelector('[data-slot-key="right"]');
-          const leftNode = formulaNodeBySlot(leftSlot, 'Left formula');
-          const rightNode = formulaNodeBySlot(rightSlot, 'Right formula');
-          ast = {
-            type: 'globally',
-            operand: {
-              type: 'implies',
-              left: leftNode,
-              right: { type: 'next', operand: rightNode }
-            }
-          };
-        } else {
+        const builder = FORMULA_TEMPLATE_BUILDERS[templateName];
+        if (!builder) {
           throw new Error(`Unsupported formula template: ${templateName}`);
         }
+        const ast = builder(templateEl);
 
         const tempDisplay = formulaDisplay(ast);
         const existing = formulaTextToId.get(canonicalFormulaKey(tempDisplay));
