@@ -3,28 +3,14 @@
   "operand": {
     "type": "implies",
     "left": {
-      "type": "eq",
-      "left": {
-        "type": "var",
-        "name": "The currently active branch classification."
-      },
-      "right": {
-        "type": "enum",
-        "name": "The main branch."
-      }
+      "type": "ap",
+      "name": "The main branch."
     },
     "right": {
       "type": "not",
       "operand": {
-        "type": "eq",
-        "left": {
-          "type": "var",
-          "name": "The current Git workflow action/event being attempted at this step."
-        },
-        "right": {
-          "type": "enum",
-          "name": "A direct commit action on the current branch (as modeled in this workflow)."
-        }
+        "type": "ap",
+        "name": "(transition) A direct commit action on the current branch (as modeled in this workflow)."
       }
     }
   }

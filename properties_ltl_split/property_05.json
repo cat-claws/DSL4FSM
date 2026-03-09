@@ -3,28 +3,14 @@
   "operand": {
     "type": "implies",
     "left": {
-      "type": "eq",
-      "left": {
-        "type": "var",
-        "name": "The current repository operation mode."
-      },
-      "right": {
-        "type": "enum",
-        "name": "A detached-head repository mode."
-      }
+      "type": "ap",
+      "name": "A detached-head repository mode."
     },
     "right": {
       "type": "not",
       "operand": {
-        "type": "eq",
-        "left": {
-          "type": "var",
-          "name": "The current Git workflow action/event being attempted at this step."
-        },
-        "right": {
-          "type": "enum",
-          "name": "A normal push action to the remote repository."
-        }
+        "type": "ap",
+        "name": "(transition) A normal push action to the remote repository."
       }
     }
   }

@@ -6,26 +6,12 @@
       "type": "and",
       "args": [
         {
-          "type": "eq",
-          "left": {
-            "type": "var",
-            "name": "The divergence-condition indicator for local versus remote history."
-          },
-          "right": {
-            "type": "enum",
-            "name": "A divergence flag indicating the histories are in a diverged condition."
-          }
+          "type": "ap",
+          "name": "A divergence flag indicating the histories are in a diverged condition."
         },
         {
-          "type": "eq",
-          "left": {
-            "type": "var",
-            "name": "The current Git workflow action/event being attempted at this step."
-          },
-          "right": {
-            "type": "enum",
-            "name": "A failed rebase outcome/action indicator."
-          }
+          "type": "ap",
+          "name": "(transition) A failed rebase outcome/action indicator."
         }
       ]
     }

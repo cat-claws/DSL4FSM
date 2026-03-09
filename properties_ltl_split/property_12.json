@@ -1,14 +1,7 @@
 {
   "type": "globally",
   "operand": {
-    "type": "le",
-    "left": {
-      "type": "var",
-      "name": "The number of unpublished commits currently in scope."
-    },
-    "right": {
-      "type": "number",
-      "value": 8
-    }
+    "type": "ap",
+    "name": "The number of unpublished commits currently in scope. <= 8"
   }
 }

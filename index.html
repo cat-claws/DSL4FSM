@@ -3,105 +3,124 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Unified DSL Builder -> LTL</title>
+  <title>Stepwise AP -> Formula -> Property Builder</title>
   <style>
     :root {
-      --bg: #f6f5f2;
-      --panel: #fffdf7;
-      --ink: #1d2018;
-      --muted: #626a59;
-      --border: #ddd8ca;
-      --accent: #065f46;
-      --warn: #9a3412;
-      --error: #b42318;
-      --ok: #166534;
-      --shadow: 0 14px 28px rgba(27, 31, 22, 0.08);
+      --bg: #f4f4f4;
+      --panel: #ffffff;
+      --ink: #222222;
+      --muted: #666666;
+      --border: #cccccc;
+      --accent: #1f5fbf;
+      --warn: #8a4b00;
+      --error: #b00020;
+      --ok: #0b6e0b;
     }
 
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      background:
-        radial-gradient(circle at 10% 10%, #f1e8d5 0 14%, transparent 14%),
-        radial-gradient(circle at 90% 85%, #dff0e3 0 18%, transparent 18%),
-        linear-gradient(140deg, #f9f6ec 0%, #f1f7f3 100%);
+      background: var(--bg);
       color: var(--ink);
-      font-family: "IBM Plex Sans", "Segoe UI", Tahoma, sans-serif;
-      padding: 22px 14px;
+      font-family: Arial, Helvetica, sans-serif;
+      padding: 16px;
       min-height: 100vh;
     }
 
-    .wrap { width: min(1280px, 100%); margin: 0 auto; display: grid; gap: 14px; }
+    .wrap { width: min(1200px, 100%); margin: 0 auto; display: grid; gap: 10px; }
+
     .card {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      box-shadow: var(--shadow);
-      padding: 14px;
+      border-radius: 4px;
+      padding: 10px;
     }
 
-    h1 { margin: 0 0 6px; font: 700 clamp(1.2rem, 2.4vw, 1.8rem)/1.2 "IBM Plex Serif", Georgia, serif; }
-    .sub { margin: 0; color: var(--muted); }
+    h1 { margin: 0 0 6px; font-size: 1.3rem; font-weight: 700; }
+    .sub { margin: 0; color: var(--muted); font-size: 0.95rem; }
 
-    .layout { display: grid; gap: 14px; grid-template-columns: 1.15fr 0.85fr; }
-    @media (max-width: 1060px) { .layout { grid-template-columns: 1fr; } }
+    .layout { display: grid; gap: 10px; grid-template-columns: 1.2fr 0.8fr; }
+    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
 
-    .stack { display: grid; gap: 12px; }
-    .templates { display: grid; gap: 10px; }
+    .stack { display: grid; gap: 8px; }
+    .split { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+    .formula-templates { display: grid; gap: 6px; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 980px) { .formula-templates { grid-template-columns: 1fr; } }
 
     .tpl {
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px;
+      border-radius: 4px;
+      padding: 6px;
       background: #fff;
     }
 
-    .tpl-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .tpl-title { font-weight: 700; font-size: 0.92rem; }
+    .tpl-head { display: none; }
+    .tpl-title { display: none; }
 
     .code-line {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 4px;
       align-items: center;
-      font: 600 0.9rem/1.45 "JetBrains Mono", Consolas, monospace;
+      justify-content: space-between;
+      font: 600 0.88rem/1.4 Consolas, "Courier New", monospace;
     }
+    .code-main { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 
-    .kw { color: #7c2d12; font-weight: 700; }
+    .kw { color: #333333; font-weight: 700; }
 
-    .slot-wrap { display: inline-flex; flex-direction: column; gap: 4px; min-width: 110px; }
+    .slot-wrap { display: inline-flex; flex-direction: column; gap: 2px; min-width: 130px; }
 
-    input.slot, textarea, select, input[type="text"] {
+    input.slot,
+    input[type="text"],
+    select {
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 7px 8px;
-      font: 500 0.86rem/1.3 "JetBrains Mono", Consolas, monospace;
-      background: #fcfcfa;
+      border-radius: 3px;
+      padding: 5px 6px;
+      font: 500 0.84rem/1.3 Consolas, "Courier New", monospace;
+      background: #fff;
       color: var(--ink);
     }
 
-    textarea { width: 100%; min-height: 120px; resize: vertical; }
+    input.slot.drag-ok { outline: 2px solid #4f8f4f; outline-offset: 1px; }
+    input.slot.drag-bad { outline: 2px solid #cc5555; outline-offset: 1px; }
 
-    input.slot.drag-ok { outline: 2px solid #72b6a6; outline-offset: 1px; }
-    input.slot.drag-bad { outline: 2px solid #e27762; outline-offset: 1px; }
+    .slot-meta {
+      min-height: 1em;
+      font: 600 0.72rem/1 Consolas, "Courier New", monospace;
+      color: #555;
+    }
 
-    .slot-meta { min-height: 1em; font: 600 0.75rem/1 "JetBrains Mono", Consolas, monospace; color: #49584d; }
-
-    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 
     button {
       border: 1px solid var(--border);
-      background: #fff;
+      background: #f8f8f8;
       color: var(--ink);
-      border-radius: 999px;
-      padding: 8px 12px;
-      font: 700 0.84rem/1 "IBM Plex Sans", sans-serif;
+      border-radius: 3px;
+      padding: 6px 10px;
+      font-size: 0.82rem;
+      font-weight: 700;
       cursor: pointer;
     }
-    button:hover { border-color: #bbb4a3; }
-    .add { background: var(--accent); color: #fff; border-color: transparent; }
-    .add:hover { background: #075842; }
-    .warn { background: #fff7ed; color: var(--warn); border-color: #f6d6b3; }
+
+    button:hover { background: #efefef; }
+
+    .add {
+      background: var(--accent);
+      color: #fff;
+      border-color: #194d99;
+    }
+
+    .add:hover { background: #194d99; }
+
+    .warn {
+      background: #fff4e8;
+      color: var(--warn);
+      border-color: #e3c8a8;
+    }
 
     .status { min-height: 1.2em; font-size: 0.9rem; font-weight: 700; }
     .ok { color: var(--ok); }
@@ -109,269 +128,259 @@
 
     .mono {
       margin: 0;
-      padding: 10px;
+      padding: 8px;
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 3px;
       background: #fff;
       white-space: pre-wrap;
       word-break: break-word;
-      font: 500 0.86rem/1.45 "JetBrains Mono", Consolas, monospace;
+      font: 500 0.83rem/1.4 Consolas, "Courier New", monospace;
     }
 
-    .symbols { display: grid; gap: 8px; }
-    .sym-group { border: 1px solid #ece7da; border-radius: 10px; padding: 8px; background: #fff; }
-    .sym-head { margin: 0 0 6px; font-size: 0.82rem; color: #5d664f; text-transform: uppercase; }
+    .drop-col {
+      border: 1px dashed var(--border);
+      border-radius: 4px;
+      padding: 6px;
+      background: #fff;
+      min-height: 72px;
+    }
+
+    .drop-col h4 {
+      margin: 0 0 6px;
+      font-size: 0.78rem;
+      color: #555;
+      text-transform: uppercase;
+    }
+
+    .drop-col.drag-ok { outline: 2px solid #4f8f4f; outline-offset: 1px; }
+    .drop-col.drag-bad { outline: 2px solid #cc5555; outline-offset: 1px; }
+
     .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
     .chip {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      border-radius: 999px;
-      border: 1px solid #d7e5db;
-      background: #f0f8f3;
-      padding: 5px 9px;
-      font: 600 0.78rem/1 "JetBrains Mono", Consolas, monospace;
+      border-radius: 3px;
+      border: 1px solid #cfcfcf;
+      background: #f7f7f7;
+      padding: 4px 6px;
+      font: 600 0.78rem/1 Consolas, "Courier New", monospace;
       cursor: grab;
       user-select: none;
     }
 
-    .chip .raw { color: #2f3b33; opacity: 0.85; }
+    .chip button {
+      border: 1px solid #bbb;
+      background: #fff;
+      padding: 0 4px;
+      margin-left: 2px;
+      border-radius: 2px;
+      font: 700 0.72rem/1 Arial, sans-serif;
+      cursor: pointer;
+      color: #444;
+    }
 
-    .two-col { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
-    @media (max-width: 760px) { .two-col { grid-template-columns: 1fr; } }
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    th, td { padding: 6px 7px; border-bottom: 1px solid #e5e5e5; text-align: left; vertical-align: top; }
+    th { background: #f7f7f7; font-size: 0.75rem; color: #555; text-transform: uppercase; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-    th, td { padding: 7px 8px; border-bottom: 1px solid #ece9de; text-align: left; vertical-align: top; }
-    th { background: #fbfaf5; text-transform: uppercase; font-size: 0.76rem; color: #596150; }
-
-    .foot { color: var(--muted); font-size: 0.79rem; margin: 0; }
+    .foot { color: var(--muted); font-size: 0.78rem; margin: 0; }
   </style>
 </head>
 <body>
   <main class="wrap">
     <section class="card">
-      <h1>Unified DSL Builder + Translator</h1>
-      <p class="sub">One page for template editing, strict DSL import, examples, symbol reuse, and LTL translation.</p>
-      <p class="sub">All rules are stored symbolically. LTL output uses symbols only.</p>
+      <h1>Stepwise AP -> Formula -> Property Builder</h1>
+      <p class="sub">Build properties in three stages: reusable APs, reusable formulas, then final properties.</p>
+      <p class="sub">Transition APs are emitted as propositions with suffix <code>is performed</code>.</p>
     </section>
 
     <section class="layout">
       <article class="card stack">
-        <div class="two-col">
-          <section class="stack">
-            <p><strong>Strict DSL Import</strong></p>
-            <textarea id="dslInput" spellcheck="false" placeholder="One rule per line, strict syntax (no 'safety', no ':', no trailing ';')."></textarea>
-            <div class="row">
-              <button id="importDsl" class="add">Import DSL Lines</button>
-              <button id="clearDsl">Clear Input</button>
+        <section class="stack">
+          <p><strong>AP Buckets</strong></p>
+          <div class="split">
+            <div class="drop-col" data-ap-bucket="state">
+              <h4>State APs</h4>
+              <div id="stateApChips" class="chips"></div>
             </div>
-          </section>
+            <div class="drop-col" data-ap-bucket="transition">
+              <h4>Transition APs</h4>
+              <div id="transitionApChips" class="chips"></div>
+            </div>
+          </div>
+          <p class="foot">APs are auto-collected while building formulas. Drag AP chips between buckets to change type globally.</p>
+        </section>
 
-          <section class="stack">
-            <p><strong>Examples (Loaded Through Symbol Pipeline)</strong></p>
-            <div class="row">
-              <select id="exampleSet">
-                <option value="core">Core</option>
-                <option value="git_safety">Git Safety</option>
-                <option value="guards">Guarded Actions</option>
-                <option value="transition">Transition Focus</option>
-              </select>
-              <button id="loadExample" class="warn">Load Example</button>
-              <button id="shuffleExample">Shuffle Random</button>
+        <section class="stack">
+          <p><strong>Formula Builder + Pool</strong></p>
+          <div class="formula-templates">
+          <div class="tpl" data-template="formula_ap">
+            <div class="code-line">
+              <span class="code-main">
+                <span class="slot-wrap"><input class="slot" data-slot-kind="ap" data-slot-key="ap" placeholder="AP text or drag AP chip" /><span class="slot-meta"></span></span>
+              </span>
+              <button class="add" data-add-formula="formula_ap">Add Formula</button>
             </div>
-            <p class="foot">Examples are imported as normal DSL lines, then symbolized.</p>
-          </section>
-        </div>
+          </div>
+          <div class="tpl" data-template="formula_not">
+            <div class="code-line">
+              <span class="code-main"><span class="kw">not</span><span class="slot-wrap"><input class="slot" data-slot-kind="formula" data-slot-key="operand" placeholder="Drag formula/AP chip or type AP text" /><span class="slot-meta"></span></span></span>
+              <button class="add" data-add-formula="formula_not">Add Formula</button>
+            </div>
+          </div>
+          <div class="tpl" data-template="formula_and">
+            <div class="code-line">
+              <span class="code-main">
+                <span class="slot-wrap"><input class="slot" data-slot-kind="formula" data-slot-key="left" placeholder="Drag formula/AP chip or type AP text" /><span class="slot-meta"></span></span>
+                <span class="kw">and</span>
+                <span class="slot-wrap"><input class="slot" data-slot-kind="formula" data-slot-key="right" placeholder="Drag formula/AP chip or type AP text" /><span class="slot-meta"></span></span>
+              </span>
+              <button class="add" data-add-formula="formula_and">Add Formula</button>
+            </div>
+          </div>
+          <div class="tpl" data-template="formula_or">
+            <div class="code-line">
+              <span class="code-main">
+                <span class="slot-wrap"><input class="slot" data-slot-kind="formula" data-slot-key="left" placeholder="Drag formula/AP chip or type AP text" /><span class="slot-meta"></span></span>
+                <span class="kw">or</span>
+                <span class="slot-wrap"><input class="slot" data-slot-kind="formula" data-slot-key="right" placeholder="Drag formula/AP chip or type AP text" /><span class="slot-meta"></span></span>
+              </span>
+              <button class="add" data-add-formula="formula_or">Add Formula</button>
+            </div>
+          </div>
+          <div class="tpl" data-template="formula_implies">
+            <div class="code-line">
+              <span class="code-main">
+                <span class="slot-wrap"><input class="slot" data-slot-kind="formula" data-slot-key="left" placeholder="Drag formula/AP chip or type AP text" /><span class="slot-meta"></span></span>
+                <span class="kw">-></span>
+                <span class="slot-wrap"><input class="slot" data-slot-kind="formula" data-slot-key="right" placeholder="Drag formula/AP chip or type AP text" /><span class="slot-meta"></span></span>
+              </span>
+              <button class="add" data-add-formula="formula_implies">Add Formula</button>
+            </div>
+          </div>
+          <div class="tpl" data-template="formula_always">
+            <div class="code-line">
+              <span class="code-main">
+                <span class="kw">always</span>
+                <span class="slot-wrap"><input class="slot" data-slot-kind="formula" data-slot-key="formula" placeholder="Drag formula/AP chip or type AP text" /><span class="slot-meta"></span></span>
+              </span>
+              <button class="add" data-add-formula="formula_always">Add Formula</button>
+            </div>
+          </div>
+          <div class="tpl" data-template="formula_always_next">
+            <div class="code-line">
+              <span class="code-main">
+                <span class="kw">always</span>
+                <span class="slot-wrap"><input class="slot" data-slot-kind="formula" data-slot-key="left" placeholder="Drag formula/AP chip or type AP text" /><span class="slot-meta"></span></span>
+                <span class="kw">-></span>
+                <span class="kw">next</span>
+                <span class="slot-wrap"><input class="slot" data-slot-kind="formula" data-slot-key="right" placeholder="Drag formula/AP chip or type AP text" /><span class="slot-meta"></span></span>
+              </span>
+              <button class="add" data-add-formula="formula_always_next">Add Formula</button>
+            </div>
+          </div>
+          </div>
 
-        <section>
-          <p><strong>Template Builder (5 Rules)</strong></p>
-          <div class="templates">
-            <div class="tpl" data-template="invariant">
-              <div class="tpl-head"><div class="tpl-title">Invariant</div><button class="add" data-add="invariant">Add Rule</button></div>
-              <div class="code-line"><span class="kw">invariant</span><span class="slot-wrap"><input class="slot" data-type="formula" data-slot="phi" placeholder="Formula" /><span class="slot-meta"></span></span></div>
-            </div>
-
-            <div class="tpl" data-template="forbid">
-              <div class="tpl-head"><div class="tpl-title">Forbid</div><button class="add" data-add="forbid">Add Rule</button></div>
-              <div class="code-line"><span class="kw">forbid</span><span class="slot-wrap"><input class="slot" data-type="formula" data-slot="phi" placeholder="Formula" /><span class="slot-meta"></span></span></div>
-            </div>
-
-            <div class="tpl" data-template="require">
-              <div class="tpl-head"><div class="tpl-title">Require</div><button class="add" data-add="require">Add Rule</button></div>
-              <div class="code-line">
-                <span class="kw">require</span>
-                <span class="slot-wrap"><input class="slot" data-type="formula" data-slot="lhs" placeholder="Formula A" /><span class="slot-meta"></span></span>
-                <span>-></span>
-                <span class="slot-wrap"><input class="slot" data-type="formula" data-slot="rhs" placeholder="Formula B" /><span class="slot-meta"></span></span>
-              </div>
-            </div>
-
-            <div class="tpl" data-template="no_transition">
-              <div class="tpl-head"><div class="tpl-title">No Transition</div><button class="add" data-add="no_transition">Add Rule</button></div>
-              <div class="code-line">
-                <span class="kw">no_transition</span>
-                <span class="slot-wrap"><input class="slot" data-type="state" data-slot="src" placeholder="State" /><span class="slot-meta"></span></span>
-                <span>-></span>
-                <span class="slot-wrap"><input class="slot" data-type="state" data-slot="dst" placeholder="State" /><span class="slot-meta"></span></span>
-              </div>
-            </div>
-
-            <div class="tpl" data-template="bounded">
-              <div class="tpl-head"><div class="tpl-title">Bounded</div><button class="add" data-add="bounded">Add Rule</button></div>
-              <div class="code-line">
-                <span class="kw">bounded</span>
-                <span class="slot-wrap"><input class="slot" data-type="variable" data-slot="var" placeholder="Variable" /><span class="slot-meta"></span></span>
-                <span><=</span>
-                <span class="slot-wrap"><input class="slot" data-type="number" data-slot="num" placeholder="Number" /><span class="slot-meta"></span></span>
-              </div>
-            </div>
+          <div>
+            <p><strong>Formula Pool</strong></p>
+            <div id="formulaChips" class="chips"></div>
           </div>
         </section>
 
-        <div class="row">
-          <button id="compileNow" class="add">Compile Current Rules</button>
-          <button id="clearRules" class="warn">Clear Rules</button>
-          <button id="clearSymbols">Clear Symbols</button>
-        </div>
+        <section class="stack">
+          <p><strong>Property Pool</strong></p>
+          <p class="foot">Pick formulas from Formula Pool using <code>+P</code> to add them as properties.</p>
+          <div>
+            <div style="max-height:240px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#fff;">
+              <table>
+                <thead><tr><th>#</th><th>Property</th><th>Action</th></tr></thead>
+                <tbody id="propertyRows"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="row">
+            <button id="clearAllBtn" class="warn">Clear All</button>
+          </div>
+        </section>
 
         <div id="status" class="status"></div>
-
-        <div>
-          <p><strong>Generated Symbolic DSL</strong></p>
-          <div style="max-height:220px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#fff;">
-            <table>
-              <thead><tr><th>#</th><th>Rule</th><th>Action</th></tr></thead>
-              <tbody id="ruleRows"></tbody>
-            </table>
-          </div>
-        </div>
       </article>
 
       <article class="card stack">
         <div>
-          <p><strong>Symbol Library (Drag Into Same-Type Boxes)</strong></p>
-          <div id="symbolGroups" class="symbols"></div>
-        </div>
-
-        <div>
-          <p><strong>Symbol : Original String Mapping</strong></p>
-          <div style="max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#fff;">
+          <p><strong>AP Mapping</strong></p>
+          <div style="max-height:220px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#fff;">
             <table>
-              <thead><tr><th>Type</th><th>Symbol</th><th>Original String</th></tr></thead>
-              <tbody id="mapRows"></tbody>
+              <thead><tr><th>ID</th><th>Type</th><th>AP Text</th><th>Action</th></tr></thead>
+              <tbody id="apRows"></tbody>
             </table>
           </div>
         </div>
 
         <div>
-          <p><strong>LTL (Conjunction, Symbolic)</strong></p>
-          <pre id="ltlCombined" class="mono">(compile to generate)</pre>
-        </div>
-
-        <div>
-          <p><strong>Simplified LTL (Coq)</strong></p>
-          <pre id="ltlSimplified" class="mono">(compile to generate)</pre>
-        </div>
-
-        <div>
-          <p><strong>Per Rule Translation</strong></p>
-          <div style="max-height:280px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#fff;">
+          <p><strong>Per Property LTL</strong></p>
+          <div style="max-height:260px; overflow:auto; border:1px solid var(--border); border-radius:10px; background:#fff;">
             <table>
-              <thead><tr><th>#</th><th>DSL</th><th>LTL</th></tr></thead>
+              <thead><tr><th>#</th><th>LTL</th></tr></thead>
               <tbody id="ltlRows"></tbody>
             </table>
           </div>
         </div>
 
-        <p class="foot">Types: <code>S*</code> state, <code>V*</code> variable, <code>N*</code> number, <code>F*</code> formula. Drag/drop is type-constrained. Simplification is computed by Coq backend.</p>
+        <div>
+          <p><strong>LTL (Conjunction)</strong></p>
+          <pre id="ltlCombined" class="mono">(no properties yet)</pre>
+        </div>
+
+        <div>
+          <p><strong>Simplified LTL (Coq)</strong></p>
+          <pre id="ltlSimplified" class="mono">(no properties yet)</pre>
+        </div>
+
+        <div>
+          <p><strong>AST JSON (Conjunction)</strong></p>
+          <pre id="astCombined" class="mono">(no properties yet)</pre>
+        </div>
+
+        <p class="foot">Grammar: Formula = Atom | not F | F and F | F or F | F -> F. Property = always F | always F -> next F.</p>
       </article>
     </section>
   </main>
 
   <script>
-    const TYPE_INFO = {
-      state: { prefix: 'S', label: 'State' },
-      variable: { prefix: 'V', label: 'Variable' },
-      number: { prefix: 'N', label: 'Number' },
-      formula: { prefix: 'F', label: 'Formula' }
-    };
+    const apStore = new Map();
+    const apTextToId = new Map();
+    const formulaStore = new Map();
+    const formulaTextToId = new Map();
+    const propertyStore = [];
 
-    const counters = { state: 0, variable: 0, number: 0, formula: 0 };
-    const valueToSymbol = new Map();
-    const symbolToValue = new Map();
-    const rules = [];
-    let currentDrag = null;
+    let apCounter = 0;
+    let formulaCounter = 0;
+    let propertyCounter = 0;
+    let dragPayload = null;
 
     const statusEl = document.getElementById('status');
-    const ruleRowsEl = document.getElementById('ruleRows');
-    const mapRowsEl = document.getElementById('mapRows');
-    const symbolGroupsEl = document.getElementById('symbolGroups');
+    const stateApChipsEl = document.getElementById('stateApChips');
+    const transitionApChipsEl = document.getElementById('transitionApChips');
+    const formulaChipsEl = document.getElementById('formulaChips');
+    const propertyRowsEl = document.getElementById('propertyRows');
+    const apRowsEl = document.getElementById('apRows');
+    const ltlRowsEl = document.getElementById('ltlRows');
     const ltlCombinedEl = document.getElementById('ltlCombined');
     const ltlSimplifiedEl = document.getElementById('ltlSimplified');
-    const ltlRowsEl = document.getElementById('ltlRows');
-    const dslInputEl = document.getElementById('dslInput');
-    const exampleSetEl = document.getElementById('exampleSet');
+    const astCombinedEl = document.getElementById('astCombined');
     let simplifyReqSeq = 0;
-
-    const exampleSets = {
-      core: [
-        'invariant !(grant1 && grant2)',
-        'forbid (state == ViolationLost)',
-        'require (event == RB) -> (event == RB_loc)',
-        'require (branch == Main) -> !(event == CO)',
-        'no_transition NeedImmediateForcePush -> ViolationMissedImmediateForcePush',
-        'bounded count <= 8'
-      ],
-      git_safety: [
-        'forbid (event == RB_pub)',
-        'forbid (event == MG)',
-        'require (event == PU) -> (sync == Ahead)',
-        'forbid ((divergence == Div) and (event == RB_fail))',
-        'forbid (event == RefBackMove)',
-        'require (event == PUF) -> (auth == Auth)'
-      ],
-      guards: [
-        'require (mode == Detached) -> not (event == PU)',
-        'forbid ((branch == Main) and (event == CO))',
-        'require (branch == Main) -> not (event == CO)',
-        'require (state == H_BranchRequired) -> not (event == CO)',
-        'forbid (sync == Diverged)',
-        'forbid (state == B_Diverged or state == H_Diverged)'
-      ],
-      transition: [
-        'invariant (acyclic == true)',
-        'no_transition NeedImmediateForcePush -> ViolationMissedImmediateForcePush',
-        'require (event == RB) -> (event == RB_loc)',
-        'forbid (state == ViolationLost)',
-        'bounded count <= 8'
-      ]
-    };
-
-    const randomPool = [
-      'invariant !(grant1 && grant2)',
-      'forbid (state == ViolationLost)',
-      'forbid (event == RB_pub)',
-      'require (event == RB) -> (event == RB_loc)',
-      'forbid (event == MG)',
-      'require (mode == Detached) -> not (event == PU)',
-      'forbid ((branch == Main) and (event == CO))',
-      'require (state == H_BranchRequired) -> not (event == CO)',
-      'require (event == PU) -> (sync == Ahead)',
-      'forbid ((divergence == Div) and (event == RB_fail))',
-      'forbid (event == RefBackMove)',
-      'require (event == PUF) -> (auth == Auth)',
-      'no_transition NeedImmediateForcePush -> ViolationMissedImmediateForcePush',
-      'bounded count <= 8'
-    ];
 
     function setStatus(msg, isError = false) {
       statusEl.textContent = msg;
       statusEl.className = `status ${isError ? 'error' : 'ok'}`;
     }
 
-    function escapeHtml(s) {
-      return s
+    function esc(s) {
+      return String(s)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -379,222 +388,226 @@
         .replace(/'/g, '&#39;');
     }
 
-    function keyFor(type, raw) {
-      return `${type}||${raw.trim()}`;
+    function normalizeText(raw) {
+      return raw.trim();
     }
 
-    function lookupSymbol(type, rawInput) {
-      const raw = rawInput.trim();
-      const key = keyFor(type, raw);
-      return valueToSymbol.get(key) || null;
+    function canonicalApKey(raw) {
+      return normalizeText(raw).replace(/\s+/g, ' ').toLowerCase();
     }
 
-    function getOrCreateSymbol(type, rawInput) {
-      const raw = rawInput.trim();
-      const key = keyFor(type, raw);
-      if (valueToSymbol.has(key)) return valueToSymbol.get(key);
-      counters[type] += 1;
-      const symbol = `${TYPE_INFO[type].prefix}${counters[type]}`;
-      valueToSymbol.set(key, symbol);
-      symbolToValue.set(symbol, { type, value: raw });
-      renderSymbolLibrary();
-      renderMappingTable();
-      return symbol;
+    function canonicalFormulaKey(raw) {
+      return normalizeText(raw).replace(/\s+/g, ' ');
     }
 
-    function validateSlotType(type, raw) {
-      if (!raw) return 'Value is required.';
-      if (type === 'number' && !/^-?\d+(?:\.\d+)?$/.test(raw)) return 'Number box requires a numeric value.';
-      return null;
+    function transitionProposition(text) {
+      if (/is performed[.!?]?$/i.test(text)) return text;
+      return `${text} is performed`;
     }
 
-    function attachSlotBehavior(slotEl) {
-      const metaEl = slotEl.parentElement.querySelector('.slot-meta');
+    function ensureAp(text, preferredType = 'state') {
+      const clean = normalizeText(text);
+      if (!clean) throw new Error('AP text is required.');
+      const key = canonicalApKey(clean);
+      if (apTextToId.has(key)) return apTextToId.get(key);
 
-      function refreshMeta() {
-        const type = slotEl.dataset.type;
-        const raw = slotEl.value.trim();
-        if (!raw) {
-          slotEl.dataset.symbol = '';
-          metaEl.textContent = '';
-          return;
-        }
-        const err = validateSlotType(type, raw);
-        if (err) {
-          slotEl.dataset.symbol = '';
-          metaEl.textContent = err;
-          return;
-        }
-        const sym = lookupSymbol(type, raw);
-        if (sym) {
-          slotEl.dataset.symbol = sym;
-          metaEl.textContent = `${sym} = ${raw}`;
-        } else {
-          slotEl.dataset.symbol = '';
-          metaEl.textContent = `${TYPE_INFO[type].label} ready`;
-        }
+      const type = preferredType === 'transition' ? 'transition' : 'state';
+
+      const id = `A${++apCounter}`;
+      apStore.set(id, { id, text: clean, type });
+      apTextToId.set(key, id);
+      return id;
+    }
+
+    function astFormulaRef(formulaId) {
+      return { type: 'formula_ref', formulaId };
+    }
+
+    function astApRef(apId) {
+      return { type: 'ap_ref', apId };
+    }
+
+    function clone(obj) {
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function resolveApName(apId) {
+      const ap = apStore.get(apId);
+      if (!ap) throw new Error(`Missing AP: ${apId}`);
+      return ap.type === 'transition' ? transitionProposition(ap.text) : ap.text;
+    }
+
+    function expandFormulaAst(ast, seen = new Set()) {
+      if (!ast || typeof ast !== 'object') return ast;
+      if (ast.type === 'formula_ref') {
+        if (seen.has(ast.formulaId)) throw new Error(`Formula cycle on ${ast.formulaId}`);
+        const formula = formulaStore.get(ast.formulaId);
+        if (!formula) throw new Error(`Missing formula: ${ast.formulaId}`);
+        const nextSeen = new Set(seen);
+        nextSeen.add(ast.formulaId);
+        return expandFormulaAst(formula.ast, nextSeen);
       }
-
-      slotEl.addEventListener('input', refreshMeta);
-      slotEl.addEventListener('blur', refreshMeta);
-
-      slotEl.addEventListener('dragover', (e) => {
-        const draggedType = (currentDrag && currentDrag.type) || e.dataTransfer.getData('text/type');
-        if (draggedType && draggedType === slotEl.dataset.type) {
-          e.preventDefault();
-          slotEl.classList.add('drag-ok');
-          slotEl.classList.remove('drag-bad');
-        } else {
-          slotEl.classList.add('drag-bad');
-        }
-      });
-
-      slotEl.addEventListener('dragleave', () => slotEl.classList.remove('drag-ok', 'drag-bad'));
-
-      slotEl.addEventListener('drop', (e) => {
-        e.preventDefault();
-        slotEl.classList.remove('drag-ok', 'drag-bad');
-        const draggedType = (currentDrag && currentDrag.type) || e.dataTransfer.getData('text/type');
-        const draggedValue = (currentDrag && currentDrag.value) || e.dataTransfer.getData('text/value');
-        if (!draggedType || draggedType !== slotEl.dataset.type) {
-          setStatus(`Type mismatch: cannot drop ${draggedType || 'unknown'} into ${slotEl.dataset.type} box.`, true);
-          return;
-        }
-        slotEl.value = draggedValue;
-        slotEl.dispatchEvent(new Event('input'));
-      });
-    }
-
-    function renderSymbolLibrary() {
-      symbolGroupsEl.innerHTML = '';
-      Object.entries(TYPE_INFO).forEach(([type, info]) => {
-        const items = Array.from(symbolToValue.entries())
-          .filter(([, p]) => p.type === type)
-          .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
-
-        const group = document.createElement('section');
-        group.className = 'sym-group';
-        group.innerHTML = `<p class="sym-head">${info.label}</p><div class="chips"></div>`;
-        const chips = group.querySelector('.chips');
-
-        if (!items.length) {
-          chips.innerHTML = '<span class="foot">(none)</span>';
-        } else {
-          items.forEach(([symbol, payload]) => {
-            const chip = document.createElement('div');
-            chip.className = 'chip';
-            chip.draggable = true;
-            chip.innerHTML = `<span>${escapeHtml(symbol)}</span><span class="raw">= ${escapeHtml(payload.value)}</span>`;
-            chip.addEventListener('dragstart', (e) => {
-              currentDrag = { symbol, type: payload.type, value: payload.value };
-              e.dataTransfer.effectAllowed = 'copy';
-              // Keep plain text payload for compatibility across browsers.
-              e.dataTransfer.setData('text/plain', JSON.stringify(currentDrag));
-              e.dataTransfer.setData('text/symbol', symbol);
-              e.dataTransfer.setData('text/type', payload.type);
-              e.dataTransfer.setData('text/value', payload.value);
-            });
-            chip.addEventListener('dragend', () => { currentDrag = null; });
-            chips.appendChild(chip);
-          });
-        }
-        symbolGroupsEl.appendChild(group);
-      });
-    }
-
-    function renderMappingTable() {
-      mapRowsEl.innerHTML = '';
-      const entries = Array.from(symbolToValue.entries())
-        .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
-      if (!entries.length) {
-        mapRowsEl.innerHTML = '<tr><td colspan="3">(no mappings yet)</td></tr>';
-        return;
+      if (ast.type === 'ap_ref') {
+        return { type: 'ap', name: resolveApName(ast.apId) };
       }
-      entries.forEach(([symbol, payload]) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${escapeHtml(payload.type)}</td><td><code>${escapeHtml(symbol)}</code></td><td>${escapeHtml(payload.value)}</td>`;
-        mapRowsEl.appendChild(tr);
-      });
+      if (ast.type === 'not') {
+        return { type: 'not', operand: expandFormulaAst(ast.operand, seen) };
+      }
+      if (ast.type === 'and' || ast.type === 'or' || ast.type === 'implies') {
+        return {
+          type: ast.type,
+          left: expandFormulaAst(ast.left, seen),
+          right: expandFormulaAst(ast.right, seen)
+        };
+      }
+      return clone(ast);
     }
 
-    function splitTopLevelArrow(expr) {
+    function resolvePropertyAst(propAst) {
+      if (propAst.type !== 'globally') return clone(propAst);
+      const op = propAst.operand;
+      if (op && op.type === 'implies' && op.right && op.right.type === 'next') {
+        return {
+          type: 'globally',
+          operand: {
+            type: 'implies',
+            left: expandFormulaAst(op.left),
+            right: { type: 'next', operand: expandFormulaAst(op.right.operand) }
+          }
+        };
+      }
+      return { type: 'globally', operand: expandFormulaAst(op) };
+    }
+
+    function resolvePropertyFromFormulaId(formulaId) {
+      const f = formulaStore.get(formulaId);
+      if (!f) throw new Error(`Missing formula: ${formulaId}`);
+      return resolvePropertyAst(f.ast);
+    }
+
+    function nodeToLtl(node) {
+      if (!node || typeof node !== 'object') return '';
+      if (node.type === 'ap') return JSON.stringify(node.name);
+      if (node.type === 'true') return 'true';
+      if (node.type === 'false') return 'false';
+      if (node.type === 'globally') return `G(${nodeToLtl(node.operand)})`;
+      if (node.type === 'next') return `X(${nodeToLtl(node.operand)})`;
+      if (node.type === 'not') return `!(${nodeToLtl(node.operand)})`;
+      if (node.type === 'and') return `((${nodeToLtl(node.left)}) && (${nodeToLtl(node.right)}))`;
+      if (node.type === 'or') return `((${nodeToLtl(node.left)}) || (${nodeToLtl(node.right)}))`;
+      if (node.type === 'implies') return `((${nodeToLtl(node.left)}) -> (${nodeToLtl(node.right)}))`;
+      return JSON.stringify(node);
+    }
+
+    function stripOuterParensLtl(s) {
+      let out = s.trim();
+      while (out.startsWith('(') && out.endsWith(')')) {
+        let depth = 0;
+        let inStr = false;
+        let ok = true;
+        for (let i = 0; i < out.length; i += 1) {
+          const ch = out[i];
+          if (ch === '\"' && out[i - 1] !== '\\\\') inStr = !inStr;
+          if (inStr) continue;
+          if (ch === '(') depth += 1;
+          else if (ch === ')') depth -= 1;
+          if (depth === 0 && i !== out.length - 1) {
+            ok = false;
+            break;
+          }
+        }
+        if (!ok || depth !== 0) break;
+        out = out.slice(1, -1).trim();
+      }
+      return out;
+    }
+
+    function splitTopLevelLtl(s, op) {
       let depth = 0;
-      for (let i = 0; i < expr.length - 1; i++) {
-        if (expr[i] === '(') depth++;
-        if (expr[i] === ')') depth = Math.max(0, depth - 1);
-        if (depth === 0 && expr[i] === '-' && expr[i + 1] === '>') return [expr.slice(0, i).trim(), expr.slice(i + 2).trim()];
+      let inStr = false;
+      for (let i = 0; i <= s.length - op.length; i += 1) {
+        const ch = s[i];
+        if (ch === '\"' && s[i - 1] !== '\\\\') inStr = !inStr;
+        if (inStr) continue;
+        if (ch === '(') depth += 1;
+        else if (ch === ')') depth -= 1;
+        if (depth === 0 && s.slice(i, i + op.length) === op) {
+          return [s.slice(0, i).trim(), s.slice(i + op.length).trim()];
+        }
       }
       return null;
     }
 
-    function parseStrictLine(rawLine, lineNo) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith('#') || line.startsWith('//')) return null;
-      if (/;\s*$/.test(line)) throw new Error(`Line ${lineNo}: trailing semicolons are not allowed.`);
-      if (/^safety\b/i.test(line)) throw new Error(`Line ${lineNo}: 'safety' prefix is not part of the DSL syntax.`);
-      if (/^(invariant|forbid|require|no_transition|bounded)\s*:/i.test(line)) throw new Error(`Line ${lineNo}: keyword colon form is not allowed.`);
-      if (/\\[nrt]/.test(line)) throw new Error(`Line ${lineNo}: escaped sequences like \\n are invalid; use real new lines.`);
-
-      if (/^invariant\s+/i.test(line)) return { kind: 'invariant', phi: line.replace(/^invariant\s+/i, '').trim() };
-      if (/^forbid\s+/i.test(line)) return { kind: 'forbid', phi: line.replace(/^forbid\s+/i, '').trim() };
-      if (/^require\s+/i.test(line)) {
-        const body = line.replace(/^require\s+/i, '').trim();
-        const parts = splitTopLevelArrow(body);
-        if (!parts || !parts[0] || !parts[1]) throw new Error(`Line ${lineNo}: require must use 'require A -> B'.`);
-        return { kind: 'require', lhs: parts[0], rhs: parts[1] };
+    function splitTopLevelAllLtl(s, op) {
+      const parts = [];
+      let rest = s.trim();
+      while (true) {
+        const hit = splitTopLevelLtl(rest, op);
+        if (!hit) {
+          parts.push(rest);
+          return parts;
+        }
+        parts.push(hit[0]);
+        rest = hit[1];
       }
-      if (/^no_transition\s+/i.test(line)) {
-        const m = line.replace(/^no_transition\s+/i, '').trim().match(/^([A-Za-z_][\w]*)\s*->\s*([A-Za-z_][\w]*)$/);
-        if (!m) throw new Error(`Line ${lineNo}: no_transition must use 'no_transition S1 -> S2'.`);
-        return { kind: 'no_transition', src: m[1], dst: m[2] };
-      }
-      if (/^bounded\s+/i.test(line)) {
-        const m = line.replace(/^bounded\s+/i, '').trim().match(/^([A-Za-z_][\w]*)\s*<=\s*(-?\d+(?:\.\d+)?)$/);
-        if (!m) throw new Error(`Line ${lineNo}: bounded must use 'bounded variable <= number'.`);
-        return { kind: 'bounded', variable: m[1], number: m[2] };
-      }
-
-      throw new Error(`Line ${lineNo}: unknown construct.`);
     }
 
-    function createRule(kind, raw) {
-      if (kind === 'invariant') {
-        const f = getOrCreateSymbol('formula', raw.phi);
-        return { kind, payload: { f }, dsl: `invariant ${f}`, ltl: `G(${f})` };
-      }
-      if (kind === 'forbid') {
-        const f = getOrCreateSymbol('formula', raw.phi);
-        return { kind, payload: { f }, dsl: `forbid ${f}`, ltl: `G(!(${f}))` };
-      }
-      if (kind === 'require') {
-        const l = getOrCreateSymbol('formula', raw.lhs);
-        const r = getOrCreateSymbol('formula', raw.rhs);
-        return { kind, payload: { l, r }, dsl: `require ${l} -> ${r}`, ltl: `G((${l}) -> (${r}))` };
-      }
-      if (kind === 'no_transition') {
-        const s1 = getOrCreateSymbol('state', raw.src);
-        const s2 = getOrCreateSymbol('state', raw.dst);
-        return { kind, payload: { s1, s2 }, dsl: `no_transition ${s1} -> ${s2}`, ltl: `G((state == ${s1}) -> X(!(state == ${s2})))` };
-      }
-      if (kind === 'bounded') {
-        const v = getOrCreateSymbol('variable', raw.variable);
-        const n = getOrCreateSymbol('number', String(raw.number));
-        return { kind, payload: { v, n }, dsl: `bounded ${v} <= ${n}`, ltl: `G((${v}) <= (${n}))` };
-      }
-      throw new Error('Unsupported rule kind.');
-    }
+    function parseLtlExprToAst(expr) {
+      let s = stripOuterParensLtl(expr || '');
+      if (!s) throw new Error('empty LTL');
+      const low = s.toLowerCase();
+      if (low === 'true') return { type: 'true' };
+      if (low === 'false') return { type: 'false' };
 
-    function renderRules() {
-      if (!rules.length) {
-        ruleRowsEl.innerHTML = '<tr><td colspan=\"3\">(no rules yet)</td></tr>';
-        return;
+      const imp = splitTopLevelLtl(s, '->');
+      if (imp) {
+        return {
+          type: 'implies',
+          left: parseLtlExprToAst(imp[0]),
+          right: parseLtlExprToAst(imp[1])
+        };
       }
-      ruleRowsEl.innerHTML = '';
-      rules.forEach((r, i) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${i + 1}</td><td><code>${escapeHtml(r.dsl)}</code></td><td><button type=\"button\" data-remove-rule=\"${i}\">Remove</button></td>`;
-        ruleRowsEl.appendChild(tr);
-      });
+
+      const ors = splitTopLevelAllLtl(s, '||');
+      if (ors.length > 1) {
+        let node = parseLtlExprToAst(ors[0]);
+        for (let i = 1; i < ors.length; i += 1) {
+          node = { type: 'or', left: node, right: parseLtlExprToAst(ors[i]) };
+        }
+        return node;
+      }
+
+      const ands = splitTopLevelAllLtl(s, '&&');
+      if (ands.length > 1) {
+        let node = parseLtlExprToAst(ands[0]);
+        for (let i = 1; i < ands.length; i += 1) {
+          node = { type: 'and', left: node, right: parseLtlExprToAst(ands[i]) };
+        }
+        return node;
+      }
+
+      s = s.trim();
+      if (s.startsWith('G(') && s.endsWith(')')) {
+        return { type: 'globally', operand: parseLtlExprToAst(s.slice(2, -1)) };
+      }
+      if (s.startsWith('X(') && s.endsWith(')')) {
+        return { type: 'next', operand: parseLtlExprToAst(s.slice(2, -1)) };
+      }
+      if (s.startsWith('!')) {
+        return { type: 'not', operand: parseLtlExprToAst(s.slice(1)) };
+      }
+      if (s.startsWith('(') && s.endsWith(')')) {
+        return parseLtlExprToAst(s.slice(1, -1));
+      }
+
+      if (s.startsWith('\"') && s.endsWith('\"')) {
+        try {
+          return { type: 'ap', name: JSON.parse(s) };
+        } catch (_) {
+          return { type: 'ap', name: s.slice(1, -1) };
+        }
+      }
+      return { type: 'ap', name: s.replace(/\\s+/g, ' ').trim() };
     }
 
     async function simplifyWithCoq(formulas) {
@@ -612,189 +625,499 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ formulas })
           });
-          if (!res.ok) throw new Error(`Coq simplify API HTTP ${res.status} at ${url}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status} at ${url}`);
           const data = await res.json();
-          if (!data.ok) throw new Error(data.error || `Coq simplify API failed at ${url}`);
+          if (!data.ok) throw new Error(data.error || `Simplify failed at ${url}`);
           return data;
         } catch (e) {
           lastErr = e;
         }
       }
-      throw new Error(`Cannot reach Coq simplify server on port 8081/8811. Start: 'python tools/coq/coq_simplify_server.py'. Last error: ${lastErr?.message || 'unknown'}`);
+      throw lastErr || new Error('Cannot reach Coq simplify server.');
     }
 
-    function compileRules() {
+    function formulaDisplay(ast) {
+      const resolved = expandFormulaAst(ast);
+      return nodeToLtl(resolved)
+        .replace(/\"/g, '"')
+        .replace(/"/g, '');
+    }
+
+    function formulaNodeBySlot(slotEl, fieldName) {
+      const kind = slotEl.dataset.refKind || '';
+      const id = slotEl.dataset.refId || '';
+      const raw = normalizeText(slotEl.value || '');
+
+      if (kind === 'formula' && formulaStore.has(id)) return astFormulaRef(id);
+      if (kind === 'ap' && apStore.has(id)) return astApRef(id);
+      if (raw && formulaTextToId.has(canonicalFormulaKey(raw))) {
+        return astFormulaRef(formulaTextToId.get(canonicalFormulaKey(raw)));
+      }
+      if (raw) return astApRef(ensureAp(raw));
+      throw new Error(`${fieldName} requires a formula/AP value.`);
+    }
+
+    function apRefBySlot(slotEl, fieldName) {
+      const kind = slotEl.dataset.refKind || '';
+      const id = slotEl.dataset.refId || '';
+      const raw = normalizeText(slotEl.value || '');
+
+      if (kind === 'ap' && apStore.has(id)) return id;
+      if (!raw) throw new Error(`${fieldName} requires AP text or dragged AP chip.`);
+      return ensureAp(raw);
+    }
+
+    function hasFormulaRefInAst(ast, targetFormulaId) {
+      if (!ast || typeof ast !== 'object') return false;
+      if (ast.type === 'formula_ref') return ast.formulaId === targetFormulaId;
+      if (ast.type === 'not') return hasFormulaRefInAst(ast.operand, targetFormulaId);
+      if (ast.type === 'and' || ast.type === 'or' || ast.type === 'implies') {
+        return hasFormulaRefInAst(ast.left, targetFormulaId) || hasFormulaRefInAst(ast.right, targetFormulaId);
+      }
+      if (ast.type === 'globally') return hasFormulaRefInAst(ast.operand, targetFormulaId);
+      if (ast.type === 'next') return hasFormulaRefInAst(ast.operand, targetFormulaId);
+      return false;
+    }
+
+    function propertyDependsOnFormula(propertyFormulaId, targetFormulaId) {
+      if (propertyFormulaId === targetFormulaId) return true;
+      const f = formulaStore.get(propertyFormulaId);
+      if (!f) return false;
+      return hasFormulaRefInAst(f.ast, targetFormulaId);
+    }
+
+    function hasApRefInAst(ast, targetApId) {
+      if (!ast || typeof ast !== 'object') return false;
+      if (ast.type === 'ap_ref') return ast.apId === targetApId;
+      if (ast.type === 'formula_ref') {
+        const f = formulaStore.get(ast.formulaId);
+        if (!f) return false;
+        return hasApRefInAst(f.ast, targetApId);
+      }
+      if (ast.type === 'not') return hasApRefInAst(ast.operand, targetApId);
+      if (ast.type === 'and' || ast.type === 'or' || ast.type === 'implies') {
+        return hasApRefInAst(ast.left, targetApId) || hasApRefInAst(ast.right, targetApId);
+      }
+      if (ast.type === 'globally' || ast.type === 'next') return hasApRefInAst(ast.operand, targetApId);
+      return false;
+    }
+
+    function attachSlotDragBehavior(slotEl) {
+      const metaEl = slotEl.parentElement.querySelector('.slot-meta');
+      const slotKind = slotEl.dataset.slotKind;
+
+      slotEl.addEventListener('input', () => {
+        slotEl.dataset.refKind = '';
+        slotEl.dataset.refId = '';
+        const raw = normalizeText(slotEl.value || '');
+        if (!raw) {
+          metaEl.textContent = '';
+          return;
+        }
+        if (slotKind === 'ap') {
+          metaEl.textContent = 'Will be treated as AP text';
+        } else {
+          metaEl.textContent = 'Type AP text/full formula, or drag formula/AP chip';
+        }
+      });
+
+      slotEl.addEventListener('dragover', (e) => {
+        const payloadKind = dragPayload ? dragPayload.kind : e.dataTransfer.getData('text/kind');
+        const ok = slotKind === 'formula'
+          ? (payloadKind === 'formula' || payloadKind === 'ap')
+          : (payloadKind === slotKind);
+        if (ok) {
+          e.preventDefault();
+          slotEl.classList.add('drag-ok');
+          slotEl.classList.remove('drag-bad');
+        } else {
+          slotEl.classList.add('drag-bad');
+        }
+      });
+
+      slotEl.addEventListener('dragleave', () => slotEl.classList.remove('drag-ok', 'drag-bad'));
+
+      slotEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        slotEl.classList.remove('drag-ok', 'drag-bad');
+
+        let payload = dragPayload;
+        if (!payload) {
+          const raw = e.dataTransfer.getData('text/plain');
+          try { payload = JSON.parse(raw); } catch (_) { payload = null; }
+        }
+
+        const ok = slotKind === 'formula'
+          ? (payload && (payload.kind === 'formula' || payload.kind === 'ap'))
+          : (payload && payload.kind === slotKind);
+        if (!ok) {
+          setStatus(`Type mismatch: cannot drop ${payload ? payload.kind : 'unknown'} into ${slotKind} slot.`, true);
+          return;
+        }
+
+        slotEl.dataset.refKind = payload.kind;
+        slotEl.dataset.refId = payload.id;
+        slotEl.value = payload.label;
+        metaEl.textContent = `${payload.id} selected`;
+      });
+    }
+
+    function makeDraggableChip(kind, id, label, onDelete, onPromoteToProperty = null, showId = true) {
+      const chip = document.createElement('div');
+      chip.className = 'chip';
+      chip.draggable = true;
+      chip.innerHTML = showId
+        ? `<span>${esc(id)}</span><span>${esc(label)}</span>`
+        : `<span>${esc(label)}</span>`;
+      if (onPromoteToProperty) {
+        const addP = document.createElement('button');
+        addP.type = 'button';
+        addP.textContent = '+P';
+        addP.title = `Add ${id} as property`;
+        addP.addEventListener('click', (e) => {
+          e.stopPropagation();
+          onPromoteToProperty();
+        });
+        chip.appendChild(addP);
+      }
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.textContent = 'x';
+      del.title = `Delete ${id}`;
+      del.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onDelete();
+      });
+      chip.appendChild(del);
+
+      chip.addEventListener('dragstart', (e) => {
+        dragPayload = { kind, id, label };
+        e.dataTransfer.effectAllowed = 'copyMove';
+        e.dataTransfer.setData('text/plain', JSON.stringify(dragPayload));
+        e.dataTransfer.setData('text/kind', kind);
+      });
+
+      chip.addEventListener('dragend', () => { dragPayload = null; });
+      return chip;
+    }
+
+    function renderApBuckets() {
+      stateApChipsEl.innerHTML = '';
+      transitionApChipsEl.innerHTML = '';
+
+      const sorted = Array.from(apStore.values()).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+      for (const ap of sorted) {
+        const label = ap.text;
+        const chip = makeDraggableChip('ap', ap.id, label, () => removeAp(ap.id));
+        if (ap.type === 'state') stateApChipsEl.appendChild(chip);
+        else transitionApChipsEl.appendChild(chip);
+      }
+
+      if (!stateApChipsEl.children.length) stateApChipsEl.innerHTML = '<span class="foot">(none)</span>';
+      if (!transitionApChipsEl.children.length) transitionApChipsEl.innerHTML = '<span class="foot">(none)</span>';
+    }
+
+    function renderFormulaPool() {
+      formulaChipsEl.innerHTML = '';
+      formulaTextToId.clear();
+      const sorted = Array.from(formulaStore.values()).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+      for (const f of sorted) {
+        const label = formulaDisplay(f.ast);
+        formulaTextToId.set(canonicalFormulaKey(label), f.id);
+        const chip = makeDraggableChip(
+          'formula',
+          f.id,
+          label,
+          () => removeFormula(f.id),
+          () => addFormulaAsProperty(f.id),
+          false
+        );
+        formulaChipsEl.appendChild(chip);
+      }
+      if (!formulaChipsEl.children.length) formulaChipsEl.innerHTML = '<span class="foot">(none)</span>';
+    }
+
+    function renderApMapping() {
+      apRowsEl.innerHTML = '';
+      const sorted = Array.from(apStore.values()).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+      if (!sorted.length) {
+        apRowsEl.innerHTML = '<tr><td colspan="4">(no APs yet)</td></tr>';
+        return;
+      }
+      for (const ap of sorted) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><code>${esc(ap.id)}</code></td>
+          <td>${esc(ap.type)}</td>
+          <td>${esc(ap.text)}</td>
+          <td><button type="button" data-remove-ap="${esc(ap.id)}">Remove</button></td>
+        `;
+        apRowsEl.appendChild(tr);
+      }
+    }
+
+    function renderPropertyPoolAndOutputs() {
+      propertyRowsEl.innerHTML = '';
       ltlRowsEl.innerHTML = '';
-      if (!rules.length) {
-        ltlCombinedEl.textContent = '(compile to generate)';
-        ltlSimplifiedEl.textContent = '(compile to generate)';
+
+      if (!propertyStore.length) {
+        propertyRowsEl.innerHTML = '<tr><td colspan="3">(no properties yet)</td></tr>';
+        ltlRowsEl.innerHTML = '<tr><td colspan="2">(no properties yet)</td></tr>';
+        ltlCombinedEl.textContent = '(no properties yet)';
+        ltlSimplifiedEl.textContent = '(no properties yet)';
+        astCombinedEl.textContent = '(no properties yet)';
         return;
       }
 
-      rules.forEach((r, idx) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${idx + 1}</td><td><code>${escapeHtml(r.dsl)}</code></td><td><code>${escapeHtml(r.ltl)}</code></td>`;
-        ltlRowsEl.appendChild(tr);
+      const resolvedAstList = [];
+      const ltlList = [];
+
+      propertyStore.forEach((p, idx) => {
+        const resolved = resolvePropertyFromFormulaId(p.formulaId);
+        const ltl = nodeToLtl(resolved);
+        resolvedAstList.push(resolved);
+        ltlList.push(ltl);
+
+        const trP = document.createElement('tr');
+        trP.innerHTML = `<td>${idx + 1}</td><td><code>${esc(ltl)}</code></td><td><button type="button" data-remove-property="${esc(p.id)}">Remove</button></td>`;
+        propertyRowsEl.appendChild(trP);
+
+        const trL = document.createElement('tr');
+        trL.innerHTML = `<td>${idx + 1}</td><td><code>${esc(ltl)}</code></td>`;
+        ltlRowsEl.appendChild(trL);
       });
 
-      const formulas = rules.map((r) => r.ltl);
-      const original = formulas.map((f) => `(${f})`).join(' &&\n');
-      ltlCombinedEl.textContent = original;
-      ltlSimplifiedEl.textContent = '(simplifying with Coq...)';
+      ltlCombinedEl.textContent = ltlList.map((x) => `(${x})`).join(' &&\n');
+      const combinedAst = resolvedAstList.length === 1
+        ? resolvedAstList[0]
+        : { type: 'and', args: resolvedAstList };
+      astCombinedEl.textContent = JSON.stringify(combinedAst, null, 2);
 
       const reqId = ++simplifyReqSeq;
-      simplifyWithCoq(formulas).then((data) => {
+      ltlSimplifiedEl.textContent = '(simplifying with Coq...)';
+      simplifyWithCoq(ltlList).then((data) => {
         if (reqId !== simplifyReqSeq) return;
         ltlSimplifiedEl.textContent = data.text || 'G(true)';
-      }).catch((err) => {
+        try {
+          const simpAst = parseLtlExprToAst(data.text || 'true');
+          astCombinedEl.textContent = JSON.stringify(simpAst, null, 2);
+        } catch (_) {
+          astCombinedEl.textContent = JSON.stringify(combinedAst, null, 2);
+        }
+      }).catch(() => {
         if (reqId !== simplifyReqSeq) return;
         ltlSimplifiedEl.textContent = '(Coq simplification unavailable)';
-        setStatus(`Coq simplifier unavailable: ${err.message}`, true);
+        astCombinedEl.textContent = JSON.stringify(combinedAst, null, 2);
       });
     }
 
-    function addRuleFromTemplate(kind) {
-      const tpl = document.querySelector(`.tpl[data-template="${kind}"]`);
-      const slots = Array.from(tpl.querySelectorAll('.slot'));
-      const raw = {};
-
-      for (const slot of slots) {
-        const type = slot.dataset.type;
-        const value = slot.value.trim();
-        const err = validateSlotType(type, value);
-        if (err) {
-          setStatus(`${kind}: ${err}`, true);
-          slot.focus();
-          return;
-        }
-        raw[slot.dataset.slot] = value;
-        const sym = getOrCreateSymbol(type, value);
-        slot.dataset.symbol = sym;
-        const meta = slot.parentElement.querySelector('.slot-meta');
-        meta.textContent = `${sym} = ${value}`;
-      }
-
-      let rule;
-      if (kind === 'invariant') rule = createRule('invariant', { phi: raw.phi });
-      if (kind === 'forbid') rule = createRule('forbid', { phi: raw.phi });
-      if (kind === 'require') rule = createRule('require', { lhs: raw.lhs, rhs: raw.rhs });
-      if (kind === 'no_transition') rule = createRule('no_transition', { src: raw.src, dst: raw.dst });
-      if (kind === 'bounded') rule = createRule('bounded', { variable: raw.var, number: raw.num });
-
-      rules.push(rule);
-      renderRules();
-      compileRules();
-      setStatus(`Added rule: ${rule.dsl}`);
+    function rerenderAll() {
+      renderApBuckets();
+      renderFormulaPool();
+      renderApMapping();
+      renderPropertyPoolAndOutputs();
     }
 
-    function importDslLines(lines, replaceExisting = false) {
+    function removeProperty(propertyId) {
+      const idx = propertyStore.findIndex((p) => p.id === propertyId);
+      if (idx < 0) return;
+      propertyStore.splice(idx, 1);
+      rerenderAll();
+      setStatus(`Removed property ${propertyId}.`);
+    }
+
+    function removeFormula(formulaId) {
+      for (const [id, f] of formulaStore.entries()) {
+        if (id !== formulaId && hasFormulaRefInAst(f.ast, formulaId)) {
+          setStatus(`Cannot remove ${formulaId}: referenced by formula ${id}.`, true);
+          return;
+        }
+      }
+      for (const p of propertyStore) {
+        if (propertyDependsOnFormula(p.formulaId, formulaId)) {
+          setStatus(`Cannot remove ${formulaId}: referenced by property ${p.id}.`, true);
+          return;
+        }
+      }
+      formulaStore.delete(formulaId);
+      rerenderAll();
+      setStatus(`Removed formula ${formulaId}.`);
+    }
+
+    function removeAp(apId) {
+      for (const f of formulaStore.values()) {
+        if (hasApRefInAst(f.ast, apId)) {
+          setStatus(`Cannot remove ${apId}: referenced by formula ${f.id}.`, true);
+          return;
+        }
+      }
+      for (const p of propertyStore) {
+        if (hasApRefInAst(resolvePropertyFromFormulaId(p.formulaId), apId)) {
+          setStatus(`Cannot remove ${apId}: referenced by property ${p.id}.`, true);
+          return;
+        }
+      }
+      const ap = apStore.get(apId);
+      if (!ap) return;
+      apStore.delete(apId);
+      apTextToId.delete(canonicalApKey(ap.text));
+      rerenderAll();
+      setStatus(`Removed AP ${apId}.`);
+    }
+
+    function addFormulaAsProperty(formulaId) {
+      if (!formulaStore.has(formulaId)) {
+        setStatus(`Cannot add property: missing formula ${formulaId}.`, true);
+        return;
+      }
+      const id = `P${++propertyCounter}`;
+      propertyStore.push({ id, formulaId });
+      rerenderAll();
+      setStatus(`Added property ${id} from formula ${formulaId}.`);
+    }
+
+    function addFormula(templateName, templateEl) {
       try {
-        const parsed = [];
-        const arr = lines.split(/\r?\n/);
-        for (let i = 0; i < arr.length; i++) {
-          const p = parseStrictLine(arr[i], i + 1);
-          if (p) parsed.push(p);
+        let ast;
+        if (templateName === 'formula_ap') {
+          const slot = templateEl.querySelector('[data-slot-key="ap"]');
+          const apId = apRefBySlot(slot, 'AP');
+          ast = astApRef(apId);
+        } else if (templateName === 'formula_not') {
+          const slot = templateEl.querySelector('[data-slot-key="operand"]');
+          ast = { type: 'not', operand: formulaNodeBySlot(slot, 'Operand') };
+        } else if (templateName === 'formula_and' || templateName === 'formula_or' || templateName === 'formula_implies') {
+          const leftSlot = templateEl.querySelector('[data-slot-key="left"]');
+          const rightSlot = templateEl.querySelector('[data-slot-key="right"]');
+          const leftNode = formulaNodeBySlot(leftSlot, 'Left operand');
+          const rightNode = formulaNodeBySlot(rightSlot, 'Right operand');
+          const nodeType = templateName === 'formula_and' ? 'and' : templateName === 'formula_or' ? 'or' : 'implies';
+          ast = { type: nodeType, left: leftNode, right: rightNode };
+        } else if (templateName === 'formula_always') {
+          const slot = templateEl.querySelector('[data-slot-key="formula"]');
+          ast = { type: 'globally', operand: formulaNodeBySlot(slot, 'Formula') };
+        } else if (templateName === 'formula_always_next') {
+          const leftSlot = templateEl.querySelector('[data-slot-key="left"]');
+          const rightSlot = templateEl.querySelector('[data-slot-key="right"]');
+          const leftNode = formulaNodeBySlot(leftSlot, 'Left formula');
+          const rightNode = formulaNodeBySlot(rightSlot, 'Right formula');
+          ast = {
+            type: 'globally',
+            operand: {
+              type: 'implies',
+              left: leftNode,
+              right: { type: 'next', operand: rightNode }
+            }
+          };
+        } else {
+          throw new Error(`Unsupported formula template: ${templateName}`);
         }
-        if (!parsed.length) {
-          setStatus('No valid DSL rules found to import.', true);
+
+        const tempDisplay = formulaDisplay(ast);
+        const existing = formulaTextToId.get(canonicalFormulaKey(tempDisplay));
+        if (existing && formulaStore.has(existing)) {
+          setStatus(`Reused existing formula: ${tempDisplay}.`);
           return;
         }
 
-        if (replaceExisting) rules.length = 0;
-
-        parsed.forEach((p) => rules.push(createRule(p.kind, p)));
-        renderRules();
-        compileRules();
-        setStatus(`Imported ${parsed.length} rule(s).`);
+        const id = `F${++formulaCounter}`;
+        formulaStore.set(id, { id, ast });
+        rerenderAll();
+        setStatus(`Added formula: ${tempDisplay}.`);
       } catch (err) {
-        setStatus(err.message || 'Import failed.', true);
+        setStatus(err.message || 'Failed to add formula.', true);
       }
     }
 
-    function shuffledSample(items, count) {
-      const copy = [...items];
-      for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copy[i], copy[j]] = [copy[j], copy[i]];
-      }
-      return copy.slice(0, Math.max(1, Math.min(count, copy.length)));
-    }
+    function setupApBuckets() {
+      document.querySelectorAll('[data-ap-bucket]').forEach((col) => {
+        const bucketType = col.dataset.apBucket;
 
-    function clearTemplateInputs() {
-      document.querySelectorAll('.slot').forEach((slot) => {
-        slot.value = '';
-        slot.dataset.symbol = '';
-        const meta = slot.parentElement.querySelector('.slot-meta');
-        meta.textContent = '';
+        col.addEventListener('dragover', (e) => {
+          const payloadKind = dragPayload ? dragPayload.kind : e.dataTransfer.getData('text/kind');
+          if (payloadKind === 'ap') {
+            e.preventDefault();
+            col.classList.add('drag-ok');
+            col.classList.remove('drag-bad');
+          } else {
+            col.classList.add('drag-bad');
+          }
+        });
+
+        col.addEventListener('dragleave', () => col.classList.remove('drag-ok', 'drag-bad'));
+
+        col.addEventListener('drop', (e) => {
+          e.preventDefault();
+          col.classList.remove('drag-ok', 'drag-bad');
+
+          let payload = dragPayload;
+          if (!payload) {
+            const raw = e.dataTransfer.getData('text/plain');
+            try { payload = JSON.parse(raw); } catch (_) { payload = null; }
+          }
+
+          if (!payload || payload.kind !== 'ap' || !apStore.has(payload.id)) {
+            setStatus('Only AP chips can be dropped into AP buckets.', true);
+            return;
+          }
+
+          const ap = apStore.get(payload.id);
+          if (ap.type !== bucketType) {
+            ap.type = bucketType;
+            rerenderAll();
+            setStatus(`Updated ${ap.id} type to ${bucketType}.`);
+          }
+        });
       });
     }
 
-    function clearSymbols() {
-      Object.keys(counters).forEach((k) => counters[k] = 0);
-      valueToSymbol.clear();
-      symbolToValue.clear();
-      renderSymbolLibrary();
-      renderMappingTable();
-      // Rebuild symbols from existing rules would require raw payloads. We keep symbols cleared and rules cleared together.
-      rules.length = 0;
-      renderRules();
-      compileRules();
-      clearTemplateInputs();
-      setStatus('Cleared symbols and rules.');
+    function setupEventHandlers() {
+      document.querySelectorAll('.slot').forEach(attachSlotDragBehavior);
+
+      document.querySelectorAll('button[data-add-formula]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const tpl = btn.closest('[data-template]');
+          addFormula(btn.dataset.addFormula, tpl);
+        });
+      });
+
+      apRowsEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-remove-ap]');
+        if (!btn) return;
+        removeAp(btn.dataset.removeAp);
+      });
+
+      propertyRowsEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-remove-property]');
+        if (!btn) return;
+        removeProperty(btn.dataset.removeProperty);
+      });
+
+      document.getElementById('clearAllBtn').addEventListener('click', () => {
+        apStore.clear();
+        apTextToId.clear();
+        formulaStore.clear();
+        propertyStore.length = 0;
+        apCounter = 0;
+        formulaCounter = 0;
+        propertyCounter = 0;
+
+        document.querySelectorAll('.slot').forEach((slot) => {
+          slot.value = '';
+          slot.dataset.refKind = '';
+          slot.dataset.refId = '';
+          const meta = slot.parentElement.querySelector('.slot-meta');
+          if (meta) meta.textContent = '';
+        });
+
+        rerenderAll();
+        setStatus('Cleared APs, formulas, and properties.');
+      });
     }
 
-    document.querySelectorAll('.slot').forEach(attachSlotBehavior);
-
-    document.querySelectorAll('button[data-add]').forEach((btn) => {
-      btn.addEventListener('click', () => addRuleFromTemplate(btn.dataset.add));
-    });
-
-    document.getElementById('compileNow').addEventListener('click', () => {
-      compileRules();
-      setStatus(`Compiled ${rules.length} rule(s).`);
-    });
-
-    ruleRowsEl.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-remove-rule]');
-      if (!btn) return;
-      const idx = Number(btn.dataset.removeRule);
-      if (!Number.isInteger(idx) || idx < 0 || idx >= rules.length) return;
-      rules.splice(idx, 1);
-      renderRules();
-      compileRules();
-      setStatus(`Removed rule #${idx + 1}.`);
-    });
-
-    document.getElementById('clearRules').addEventListener('click', () => {
-      rules.length = 0;
-      renderRules();
-      compileRules();
-      setStatus('Cleared rules.');
-    });
-
-    document.getElementById('clearSymbols').addEventListener('click', clearSymbols);
-
-    document.getElementById('importDsl').addEventListener('click', () => importDslLines(dslInputEl.value, false));
-    document.getElementById('clearDsl').addEventListener('click', () => { dslInputEl.value = ''; });
-
-    document.getElementById('loadExample').addEventListener('click', () => {
-      const key = exampleSetEl.value;
-      const lines = (exampleSets[key] || exampleSets.core).join('\n');
-      dslInputEl.value = lines;
-      importDslLines(lines, false);
-    });
-
-    document.getElementById('shuffleExample').addEventListener('click', () => {
-      const count = 5 + Math.floor(Math.random() * 4);
-      const lines = shuffledSample(randomPool, count).join('\n');
-      dslInputEl.value = lines;
-      importDslLines(lines, false);
-    });
-
-    renderSymbolLibrary();
-    renderMappingTable();
-    renderRules();
-    compileRules();
+    setupApBuckets();
+    setupEventHandlers();
+    rerenderAll();
   </script>
 </body>
 </html>

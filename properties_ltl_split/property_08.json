@@ -3,26 +3,12 @@
   "operand": {
     "type": "implies",
     "left": {
-      "type": "eq",
-      "left": {
-        "type": "var",
-        "name": "The current Git workflow action/event being attempted at this step."
-      },
-      "right": {
-        "type": "enum",
-        "name": "A normal push action to the remote repository."
-      }
+      "type": "ap",
+      "name": "(transition) A normal push action to the remote repository."
     },
     "right": {
-      "type": "eq",
-      "left": {
-        "type": "var",
-        "name": "The current synchronization relation between local and remote history."
-      },
-      "right": {
-        "type": "enum",
-        "name": "A synchronization status where local history is ahead of remote history."
-      }
+      "type": "ap",
+      "name": "A synchronization status where local history is ahead of remote history."
     }
   }
 }

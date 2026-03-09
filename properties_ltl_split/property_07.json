@@ -3,15 +3,8 @@
   "operand": {
     "type": "not",
     "operand": {
-      "type": "eq",
-      "left": {
-        "type": "var",
-        "name": "The current synchronization relation between local and remote history."
-      },
-      "right": {
-        "type": "enum",
-        "name": "A synchronization status where local and remote histories have diverged."
-      }
+      "type": "ap",
+      "name": "A synchronization status where local and remote histories have diverged."
     }
   }
 }

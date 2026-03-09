@@ -3,30 +3,16 @@
   "operand": {
     "type": "implies",
     "left": {
-      "type": "eq",
-      "left": {
-        "type": "var",
-        "name": "The current high-level Git workflow state of the repository."
-      },
-      "right": {
-        "type": "enum",
-        "name": "A workflow state in which an immediate force push is required."
-      }
+      "type": "ap",
+      "name": "A workflow state in which an immediate force push is required."
     },
     "right": {
       "type": "next",
       "operand": {
         "type": "not",
         "operand": {
-          "type": "eq",
-          "left": {
-            "type": "var",
-            "name": "The current high-level Git workflow state of the repository."
-          },
-          "right": {
-            "type": "enum",
-            "name": "A violation state indicating that a required immediate force push was missed."
-          }
+          "type": "ap",
+          "name": "A required immediate force push was missed."
         }
       }
     }
