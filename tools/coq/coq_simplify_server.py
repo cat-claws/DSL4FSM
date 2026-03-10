@@ -244,7 +244,7 @@ def ast_to_ltl_string(ast, id_to_atom):
     raise ValueError(f'unsupported AST tag {tag}')
 
 
-def decode_list_term(list_term, id_to_atom):
+def decode_list_term_ast(list_term):
     if list_term == '[]':
         return []
     if not (list_term.startswith('[') and list_term.endswith(']')):
@@ -255,9 +255,177 @@ def decode_list_term(list_term, id_to_atom):
 
     out = []
     for item in split_list_items(inner):
-        ast = parse_coq_term(item)
-        out.append(ast_to_ltl_string(ast, id_to_atom))
+        out.append(parse_coq_term(item))
     return out
+
+
+def is_not_of(a, b):
+    return a[0] == 'not' and a[1] == b
+
+
+def are_complements(a, b):
+    if a == ('not', b) or b == ('not', a):
+        return True
+    if a[0] == 'next' and b[0] == 'next':
+        return are_complements(a[1], b[1])
+    if a[0] == 'glob' and b[0] == 'glob':
+        return are_complements(a[1], b[1])
+    return False
+
+
+def simplify_formula_ast(ast):
+    tag = ast[0]
+    if tag in ('true', 'false', 'atom_id'):
+        return ast
+    if tag in ('not', 'next', 'glob'):
+        sub = simplify_formula_ast(ast[1])
+        if tag == 'not':
+            if sub[0] == 'true':
+                return ('false',)
+            if sub[0] == 'false':
+                return ('true',)
+            if sub[0] == 'not':
+                return simplify_formula_ast(sub[1])
+        if tag == 'next':
+            if sub[0] == 'true':
+                return ('true',)
+            if sub[0] == 'false':
+                return ('false',)
+        if tag == 'glob':
+            if sub[0] == 'true':
+                return ('true',)
+            if sub[0] == 'false':
+                return ('false',)
+        return (tag, sub)
+    if tag in ('and', 'imp'):
+        left = simplify_formula_ast(ast[1])
+        right = simplify_formula_ast(ast[2])
+        if tag == 'and':
+            if left[0] == 'false' or right[0] == 'false':
+                return ('false',)
+            if left[0] == 'true':
+                return right
+            if right[0] == 'true':
+                return left
+            if left == right:
+                return left
+            if is_not_of(left, right) or is_not_of(right, left):
+                return ('false',)
+            return ('and', left, right)
+        # implication
+        if left[0] == 'false' or right[0] == 'true':
+            return ('true',)
+        if left[0] == 'true':
+            return right
+        if right[0] == 'false':
+            return simplify_formula_ast(('not', left))
+        if left == right:
+            return ('true',)
+        return ('imp', left, right)
+    return ast
+
+
+def normalize_conj_list(asts):
+    out = []
+    seen = set()
+    for f in asts:
+        sf = simplify_formula_ast(f)
+        if sf[0] == 'true':
+            continue
+        if sf in seen:
+            continue
+        out.append(sf)
+        seen.add(sf)
+    if any(f[0] == 'false' for f in out):
+        return [('false',)]
+    return out
+
+
+def has_direct_contradiction(asts):
+    for i in range(len(asts)):
+        for j in range(i + 1, len(asts)):
+            if are_complements(asts[i], asts[j]):
+                return True
+    return False
+
+
+def strengthen_once(asts):
+    asts = normalize_conj_list(asts)
+    if asts == [('false',)] or has_direct_contradiction(asts):
+        return [('false',)]
+
+    s = set(asts)
+    derived = []
+    removable = set()
+
+    imps = [f for f in asts if f[0] == 'imp']
+    globs = [f for f in asts if f[0] == 'glob']
+    glob_imps = [g for g in globs if g[1][0] == 'imp']
+
+    for imp in imps:
+        p, q = imp[1], imp[2]
+        if p in s:
+            derived.append(q)
+        if ('not', q) in s:
+            derived.append(('not', p))
+        if q in s or ('not', p) in s:
+            removable.add(imp)
+
+    for i in range(len(imps)):
+        p, q = imps[i][1], imps[i][2]
+        for j in range(i + 1, len(imps)):
+            p2, q2 = imps[j][1], imps[j][2]
+            if p == p2 and are_complements(q, q2):
+                derived.append(('not', p))
+            if q == p2:
+                derived.append(('imp', p, q2))
+            if q2 == p:
+                derived.append(('imp', p2, q))
+
+    for g in glob_imps:
+        imp = g[1]
+        p, q = imp[1], imp[2]
+        gp = ('glob', p)
+        gq = ('glob', q)
+        gnq = ('glob', ('not', q))
+        if gp in s:
+            derived.append(gq)
+        if gnq in s:
+            derived.append(('glob', ('not', p)))
+        if gq in s or ('glob', ('not', p)) in s:
+            removable.add(g)
+
+    for i in range(len(glob_imps)):
+        p, q = glob_imps[i][1][1], glob_imps[i][1][2]
+        for j in range(i + 1, len(glob_imps)):
+            p2, q2 = glob_imps[j][1][1], glob_imps[j][1][2]
+            if p == p2 and are_complements(q, q2):
+                derived.append(('glob', ('not', p)))
+            if q == p2:
+                derived.append(('glob', ('imp', p, q2)))
+            if q2 == p:
+                derived.append(('glob', ('imp', p2, q)))
+
+    next_asts = [f for f in asts if f not in removable]
+    next_asts.extend(derived)
+    next_asts = normalize_conj_list(next_asts)
+    if next_asts == [('false',)] or has_direct_contradiction(next_asts):
+        return [('false',)]
+    return next_asts
+
+
+def strengthen_simplified_asts(asts):
+    cur = normalize_conj_list(asts)
+    for _ in range(256):
+        nxt = strengthen_once(cur)
+        if nxt == cur:
+            return cur
+        cur = nxt
+    return cur
+
+
+def asts_to_ltl_strings(asts, id_to_atom):
+    return [ast_to_ltl_string(a, id_to_atom) for a in asts]
 
 
 def coq_simplify_formulas(formulas):
@@ -278,7 +446,9 @@ def coq_simplify_formulas(formulas):
             raise RuntimeError(f'coqc failed:\n{p.stdout}\n{p.stderr}')
 
         simp_list_term = parse_simplified_list(p.stdout)
-        simp_formulas = decode_list_term(simp_list_term, id_to_atom)
+        simp_asts = decode_list_term_ast(simp_list_term)
+        simp_asts = strengthen_simplified_asts(simp_asts)
+        simp_formulas = asts_to_ltl_strings(simp_asts, id_to_atom)
         return simp_formulas
     finally:
         try:
