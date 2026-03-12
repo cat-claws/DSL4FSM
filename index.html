@@ -633,10 +633,7 @@
 
     async function simplifyWithCoq(formulas) {
       const endpoints = [
-        'http://127.0.0.1:8081/api/coq/simplify',
-        'http://localhost:8081/api/coq/simplify',
-        'http://127.0.0.1:8811/api/coq/simplify',
-        'http://localhost:8811/api/coq/simplify'
+        'https://hee-exhibitive-proterandrously.ngrok-free.dev/coq/api/coq/simplify'
       ];
       let lastErr = null;
       for (const url of endpoints) {

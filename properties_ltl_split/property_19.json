@@ -1,7 +1,0 @@
-{
-  "type": "globally",
-  "operand": {
-    "type": "ap",
-    "name": "The number of retry attempts used by the workflow operation. <= 3"
-  }
-}

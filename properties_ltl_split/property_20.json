@@ -1,7 +1,0 @@
-{
-  "type": "globally",
-  "operand": {
-    "type": "ap",
-    "name": "The current depth of pending operations in the processing queue. <= 64"
-  }
-}
